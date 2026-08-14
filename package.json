@@ -18,7 +18,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:generate": "prisma generate",
     "prisma:studio": "prisma studio",
-    "check:rls": "node scripts/check-rls-policies.js"
+    "check:rls": "node scripts/check-rls-policies.js",
+    "check:schema": "node scripts/check-table-name-consistency.js"
   },
   "keywords": [],
   "author": "",

@@ -336,6 +336,7 @@ model MessageLabel {
   @@unique([message_id, category])
   @@index([tenant_id])
   @@index([message_id])
+  @@map("message_labels")
 }
 
 model PipelineVersion {
@@ -382,6 +383,7 @@ model ShadowEvalRun {
 
   @@index([tenant_id])
   @@index([approved_at])
+  @@map("shadow_eval_runs")
 }
 
 // ============================================================================
@@ -429,6 +431,7 @@ model ThreatAssessment {
 
   @@unique([tenant_id, message_id])
   @@index([tenant_id, quarantine_locked])
+  @@map("threat_assessments")
 }
 
 model BrandWatchlist {
@@ -437,8 +440,9 @@ model BrandWatchlist {
   brand_name    String
   impersonation_risk_level String @default("medium") // low | medium | high
   last_updated  DateTime @default(now())
-  
+
   @@index([domain])
+  @@map("brand_watchlist")
 }
 
 // ============================================================================

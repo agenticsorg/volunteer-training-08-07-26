@@ -108,7 +108,7 @@ CREATE INDEX "outbox_events_published_idx" ON "outbox_events"("published");
 -- ============================================================================
 
 -- CreateTable message_label
-CREATE TABLE "message_label" (
+CREATE TABLE "message_labels" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "message_id" TEXT NOT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE "message_label" (
     "classifier_version" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "message_label_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "message_labels_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable pipeline_version
@@ -140,7 +140,7 @@ CREATE TABLE "pipeline_version" (
 );
 
 -- CreateTable shadow_eval_run
-CREATE TABLE "shadow_eval_run" (
+CREATE TABLE "shadow_eval_runs" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "pipeline_version_from" TEXT NOT NULL,
@@ -153,13 +153,13 @@ CREATE TABLE "shadow_eval_run" (
     "approval_notes" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "shadow_eval_run_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "shadow_eval_runs_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex message_label
-CREATE UNIQUE INDEX "message_label_message_id_category_key" ON "message_label"("message_id", "category");
-CREATE INDEX "message_label_tenant_id_idx" ON "message_label"("tenant_id");
-CREATE INDEX "message_label_message_id_idx" ON "message_label"("message_id");
+CREATE UNIQUE INDEX "message_label_message_id_category_key" ON "message_labels"("message_id", "category");
+CREATE INDEX "message_label_tenant_id_idx" ON "message_labels"("tenant_id");
+CREATE INDEX "message_label_message_id_idx" ON "message_labels"("message_id");
 
 -- CreateIndex pipeline_version
 CREATE UNIQUE INDEX "pipeline_version_version_key" ON "pipeline_version"("version");
@@ -167,14 +167,14 @@ CREATE INDEX "pipeline_version_is_active_idx" ON "pipeline_version"("is_active")
 CREATE INDEX "pipeline_version_deployed_at_idx" ON "pipeline_version"("deployed_at");
 
 -- CreateIndex shadow_eval_run
-CREATE INDEX "shadow_eval_run_tenant_id_idx" ON "shadow_eval_run"("tenant_id");
-CREATE INDEX "shadow_eval_run_approved_at_idx" ON "shadow_eval_run"("approved_at");
+CREATE INDEX "shadow_eval_run_tenant_id_idx" ON "shadow_eval_runs"("tenant_id");
+CREATE INDEX "shadow_eval_run_approved_at_idx" ON "shadow_eval_runs"("approved_at");
 
 -- ============================================================================
 -- Stage 5: Contact Graph
 -- ============================================================================
 
--- CreateTable sender_profiles
+-- CreateTable sender_profile
 CREATE TABLE "sender_profiles" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
@@ -192,9 +192,9 @@ CREATE TABLE "sender_profiles" (
     CONSTRAINT "sender_profiles_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex sender_profiles
-CREATE UNIQUE INDEX "sender_profiles_tenant_id_mailbox_id_sender_address_key" ON "sender_profiles"("tenant_id", "mailbox_id", "sender_address");
-CREATE INDEX "sender_profiles_tenant_id_mailbox_id_idx" ON "sender_profiles"("tenant_id", "mailbox_id");
+-- CreateIndex sender_profile
+CREATE UNIQUE INDEX "sender_profile_tenant_id_mailbox_id_sender_address_key" ON "sender_profiles"("tenant_id", "mailbox_id", "sender_address");
+CREATE INDEX "sender_profile_tenant_id_mailbox_id_idx" ON "sender_profiles"("tenant_id", "mailbox_id");
 
 -- ============================================================================
 -- Enable RLS on all tenant-scoped tables
@@ -205,8 +205,8 @@ ALTER TABLE "ingested_messages" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_body_refs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "sync_event_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "outbox_events" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "message_label" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "shadow_eval_run" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "message_labels" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "shadow_eval_runs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "sender_profiles" ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
@@ -239,17 +239,17 @@ CREATE POLICY "outbox_events_tenant_isolation" ON "outbox_events" USING (
 );
 
 -- message_label tenant isolation
-CREATE POLICY "message_label_tenant_isolation" ON "message_label" USING (
+CREATE POLICY "message_label_tenant_isolation" ON "message_labels" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
 -- shadow_eval_run tenant isolation
-CREATE POLICY "shadow_eval_run_tenant_isolation" ON "shadow_eval_run" USING (
+CREATE POLICY "shadow_eval_run_tenant_isolation" ON "shadow_eval_runs" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
--- sender_profiles tenant isolation
-CREATE POLICY "sender_profiles_tenant_isolation" ON "sender_profiles" USING (
+-- sender_profile tenant isolation
+CREATE POLICY "sender_profile_tenant_isolation" ON "sender_profiles" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
@@ -258,7 +258,7 @@ CREATE POLICY "sender_profiles_tenant_isolation" ON "sender_profiles" USING (
 -- ============================================================================
 
 -- CreateTable threat_assessment
-CREATE TABLE "threat_assessment" (
+CREATE TABLE "threat_assessments" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "message_id" TEXT NOT NULL,
@@ -270,7 +270,7 @@ CREATE TABLE "threat_assessment" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "threat_assessment_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "threat_assessments_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable brand_watchlist
@@ -285,8 +285,8 @@ CREATE TABLE "brand_watchlist" (
 );
 
 -- CreateIndex threat_assessment
-CREATE UNIQUE INDEX "threat_assessment_tenant_id_message_id_key" ON "threat_assessment"("tenant_id", "message_id");
-CREATE INDEX "threat_assessment_tenant_id_quarantine_locked_idx" ON "threat_assessment"("tenant_id", "quarantine_locked");
+CREATE UNIQUE INDEX "threat_assessment_tenant_id_message_id_key" ON "threat_assessments"("tenant_id", "message_id");
+CREATE INDEX "threat_assessment_tenant_id_quarantine_locked_idx" ON "threat_assessments"("tenant_id", "quarantine_locked");
 
 -- CreateIndex brand_watchlist
 CREATE INDEX "brand_watchlist_domain_idx" ON "brand_watchlist"("domain");
@@ -428,7 +428,7 @@ CREATE INDEX "alert_dispatch_tenant_id_user_id_category_idx" ON "alert_dispatch"
 -- Enable RLS on Stage 6-10 tenant-scoped tables
 -- ============================================================================
 
-ALTER TABLE "threat_assessment" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "threat_assessments" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_priority" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "scoring_weights" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_write_back_state" ENABLE ROW LEVEL SECURITY;
@@ -442,7 +442,7 @@ ALTER TABLE "alert_dispatch" ENABLE ROW LEVEL SECURITY;
 -- ============================================================================
 
 -- threat_assessment tenant isolation
-CREATE POLICY "threat_assessment_tenant_isolation" ON "threat_assessment" USING (
+CREATE POLICY "threat_assessment_tenant_isolation" ON "threat_assessments" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 

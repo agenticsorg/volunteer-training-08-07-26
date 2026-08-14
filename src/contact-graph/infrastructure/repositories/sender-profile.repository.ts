@@ -17,7 +17,6 @@ export class SenderProfileRepository {
       },
       update: {
         classification: profile.classification as any,
-        confidence: profile.classification.confidence,
         is_vip: profile.isVip,
         vip_auto_promoted: profile.vipAutoPromoted,
         last_interaction: new Date(),
@@ -28,7 +27,6 @@ export class SenderProfileRepository {
         mailbox_id: profile.mailboxId,
         sender_address: profile.senderAddress,
         classification: profile.classification as any,
-        confidence: profile.classification.confidence,
         is_vip: profile.isVip,
         vip_auto_promoted: profile.vipAutoPromoted,
         last_interaction: new Date(),
