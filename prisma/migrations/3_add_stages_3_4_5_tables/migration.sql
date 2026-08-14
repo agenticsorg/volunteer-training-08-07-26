@@ -295,8 +295,8 @@ CREATE INDEX "brand_watchlist_domain_idx" ON "brand_watchlist"("domain");
 -- Stage 7: Prioritization
 -- ============================================================================
 
--- CreateTable message_priority
-CREATE TABLE "message_priority" (
+-- CreateTable message_priorities
+CREATE TABLE "message_priorities" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "message_id" TEXT NOT NULL,
@@ -305,7 +305,7 @@ CREATE TABLE "message_priority" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "message_priority_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "message_priorities_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable scoring_weights
@@ -323,9 +323,9 @@ CREATE TABLE "scoring_weights" (
     CONSTRAINT "scoring_weights_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex message_priority
-CREATE UNIQUE INDEX "message_priority_tenant_id_message_id_key" ON "message_priority"("tenant_id", "message_id");
-CREATE INDEX "message_priority_tenant_id_priority_score_idx" ON "message_priority"("tenant_id", "priority_score");
+-- CreateIndex message_priorities
+CREATE UNIQUE INDEX "message_priorities_tenant_id_message_id_key" ON "message_priorities"("tenant_id", "message_id");
+CREATE INDEX "message_priorities_tenant_id_priority_score_idx" ON "message_priorities"("tenant_id", "priority_score");
 
 -- CreateIndex scoring_weights
 CREATE INDEX "scoring_weights_tenant_id_idx" ON "scoring_weights"("tenant_id");
@@ -429,7 +429,7 @@ CREATE INDEX "alert_dispatch_tenant_id_user_id_category_idx" ON "alert_dispatch"
 -- ============================================================================
 
 ALTER TABLE "threat_assessments" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "message_priority" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "message_priorities" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "scoring_weights" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_write_back_state" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "correction_record" ENABLE ROW LEVEL SECURITY;
@@ -446,8 +446,8 @@ CREATE POLICY "threat_assessment_tenant_isolation" ON "threat_assessments" USING
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
--- message_priority tenant isolation
-CREATE POLICY "message_priority_tenant_isolation" ON "message_priority" USING (
+-- message_priorities tenant isolation
+CREATE POLICY "message_priorities_tenant_isolation" ON "message_priorities" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 

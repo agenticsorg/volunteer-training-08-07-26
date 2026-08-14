@@ -460,6 +460,7 @@ model MessagePriority {
 
   @@unique([tenant_id, message_id])
   @@index([tenant_id, priority_score])
+  @@map("message_priorities")
 }
 
 model ScoringWeights {
@@ -474,6 +475,7 @@ model ScoringWeights {
   updated_at    DateTime @updatedAt
 
   @@index([tenant_id])
+  @@map("scoring_weights")
 }
 
 // ============================================================================

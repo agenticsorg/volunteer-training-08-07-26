@@ -19,11 +19,8 @@ for (const model of Prisma.dmmf.datamodel.models) {
 
   if (!isImplemented) continue;
 
-  // Use dbName if present, otherwise apply Prisma's default naming convention
-  const realTableName = model.dbName ||
-    model.name
-      .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
-      .toLowerCase();
+  // Use dbName if present, otherwise Prisma queries the model name EXACTLY AS WRITTEN (no transformation)
+  const realTableName = model.dbName || model.name;
   dmmfModels[model.name] = realTableName;
 }
 
