@@ -16,11 +16,6 @@ model Tenant {
 
   users User[]
   mailboxAuthorizations MailboxAuthorization[]
-  mailboxConnections MailboxConnection[]
-  ingestedMessages IngestedMessage[]
-  messageBodyRefs MessageBodyRef[]
-  syncEventLogs SyncEventLog[]
-  outboxEvents OutboxEvent[]
 
   @@map("tenants")
 }
@@ -229,25 +224,21 @@ model IngestedMessage {
   tenantId              String   @map("tenant_id")
   messageId             String   @map("message_id") // internal UUID
   mailboxId             String   @map("mailbox_id") // FK to MailboxConnection
-  mailboxConnectionId   String?  @map("mailbox_connection_id")
   platformMessageId     String   @map("platform_message_id") // Gmail msg ID or Outlook msg ID
   platform              String   // "gmail" | "outlook"
-
+  
   normalizedEnvelope    Json     @map("normalized_envelope") // MessageEnvelope value object
   bodyRefId             String?  @map("body_ref_id") // FK to MessageBodyRef
-
+  
   createdAt             DateTime @default(now()) @map("created_at")
-
+  
   tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  mailboxConnection     MailboxConnection? @relation(fields: [mailboxConnectionId], references: [id], onDelete: Cascade)
   bodyRef               MessageBodyRef? @relation(fields: [bodyRefId], references: [id])
-  messageLabels         MessageLabel[]
 
   @@unique([tenantId, messageId])
   @@unique([tenantId, platformMessageId, platform, mailboxId])
   @@index([tenantId])
   @@index([mailboxId])
-  @@index([mailboxConnectionId])
   @@map("ingested_messages")
 }
 
@@ -325,7 +316,7 @@ model MessageLabel {
   tenant_id       String
   message_id      String
   category        Category
-  confidence_score Decimal    @db.Decimal(3, 2) // 0.00-1.00
+  confidence_score Float    @db.Decimal(3, 2) // 0.00-1.00
   source_tier     String    // "rule", "cheap_llm", "frontier_llm"
   classifier_version String
   created_at      DateTime  @default(now())

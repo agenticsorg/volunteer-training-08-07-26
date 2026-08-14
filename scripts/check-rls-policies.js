@@ -2,39 +2,51 @@
  * RLS Policy Coverage Check
  * Verifies that all tenant-scoped tables have Row-Level Security policies
  * Fails the build if any tenant-scoped table lacks an RLS policy
+ *
+ * Derives the tenant-scoped table set DYNAMICALLY from every `model { ... }`
+ * block in schema.prisma that has a tenant_id field (honoring @@map when
+ * present), and checks coverage across ALL migration.sql files, not just
+ * the initial one. A hardcoded table list would silently stop catching new
+ * tenant-scoped tables the moment a later stage adds one.
  */
 
 const fs = require('fs');
 const path = require('path');
 
-// Tables that MUST have RLS policies
-const tenantScopedTables = new Set([
-  'users',
-  'message_queue',
-  'metrics',
-]);
-
-// Read the migration SQL file
-const migrationPath = path.join(__dirname, '../prisma/migrations/0_init/migration.sql');
-const migration = fs.readFileSync(migrationPath, 'utf-8');
-
 // Read the Prisma schema
 const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
 const schema = fs.readFileSync(schemaPath, 'utf-8');
 
-// Extract all models with tenant_id from Prisma schema
-const tenantModels = new Set();
-const modelPattern = /model\s+(\w+)\s*\{[^}]*tenant_id[^}]*\}/gs;
-let match;
-while ((match = modelPattern.exec(schema)) !== null) {
-  tenantModels.add(match[1].toLowerCase().replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, ''));
+// Extract every model block, honoring @@map for the real table name
+const tenantScopedTables = new Set();
+const modelBlockPattern = /model\s+(\w+)\s*\{([^}]*)\}/gs;
+let modelMatch;
+while ((modelMatch = modelBlockPattern.exec(schema)) !== null) {
+  const [, modelName, body] = modelMatch;
+  if (!/\btenant_id\b/.test(body)) continue;
+  const mapMatch = body.match(/@@map\("([^"]+)"\)/);
+  const tableName = mapMatch
+    ? mapMatch[1]
+    : modelName.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+  tenantScopedTables.add(tableName);
 }
+
+// Read and concatenate ALL migration SQL files, not just the first one
+const migrationsDir = path.join(__dirname, '../prisma/migrations');
+const migration = fs
+  .readdirSync(migrationsDir)
+  .filter((entry) => fs.statSync(path.join(migrationsDir, entry)).isDirectory())
+  .map((dir) => {
+    const file = path.join(migrationsDir, dir, 'migration.sql');
+    return fs.existsSync(file) ? fs.readFileSync(file, 'utf-8') : '';
+  })
+  .join('\n');
 
 // Check that each tenant-scoped table has RLS enabled
 const missingRLS = [];
 const missingPolicies = [];
 
-tenantScopedTables.forEach(table => {
+tenantScopedTables.forEach((table) => {
   // Check if RLS is enabled
   const rls_pattern = new RegExp(`ALTER TABLE.*"${table}".*ENABLE ROW LEVEL SECURITY`, 'i');
   if (!rls_pattern.test(migration)) {

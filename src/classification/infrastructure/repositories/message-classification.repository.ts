@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@database/prisma.service';
-import { MessageClassification, LabelAssignment } from '../../domain/aggregates/message-classification';
+import { PrismaService } from '../../database/prisma.service';
+import { MessageClassification, LabelAssignment } from '../aggregates/message-classification';
 import { Category } from '@prisma/client';
 
 @Injectable()
