@@ -174,8 +174,8 @@ CREATE INDEX "shadow_eval_run_approved_at_idx" ON "shadow_eval_run"("approved_at
 -- Stage 5: Contact Graph
 -- ============================================================================
 
--- CreateTable sender_profile
-CREATE TABLE "sender_profile" (
+-- CreateTable sender_profiles
+CREATE TABLE "sender_profiles" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "mailbox_id" TEXT NOT NULL,
@@ -189,12 +189,12 @@ CREATE TABLE "sender_profile" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "sender_profile_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "sender_profiles_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex sender_profile
-CREATE UNIQUE INDEX "sender_profile_tenant_id_mailbox_id_sender_address_key" ON "sender_profile"("tenant_id", "mailbox_id", "sender_address");
-CREATE INDEX "sender_profile_tenant_id_mailbox_id_idx" ON "sender_profile"("tenant_id", "mailbox_id");
+-- CreateIndex sender_profiles
+CREATE UNIQUE INDEX "sender_profiles_tenant_id_mailbox_id_sender_address_key" ON "sender_profiles"("tenant_id", "mailbox_id", "sender_address");
+CREATE INDEX "sender_profiles_tenant_id_mailbox_id_idx" ON "sender_profiles"("tenant_id", "mailbox_id");
 
 -- ============================================================================
 -- Enable RLS on all tenant-scoped tables
@@ -207,7 +207,7 @@ ALTER TABLE "sync_event_logs" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "outbox_events" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_label" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "shadow_eval_run" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "sender_profile" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "sender_profiles" ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- Create RLS policies for tenant isolation
@@ -248,8 +248,8 @@ CREATE POLICY "shadow_eval_run_tenant_isolation" ON "shadow_eval_run" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
--- sender_profile tenant isolation
-CREATE POLICY "sender_profile_tenant_isolation" ON "sender_profile" USING (
+-- sender_profiles tenant isolation
+CREATE POLICY "sender_profiles_tenant_isolation" ON "sender_profiles" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
