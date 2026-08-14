@@ -58,3 +58,73 @@ model Metrics {
   @@index([timestamp])
   @@map("metrics")
 }
+
+model Plan {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name              String   @unique
+  stripePriceId     String   @unique
+  mailboxLimit      Int
+  llmTierCeiling    String   // tier-1-only, tier-2-cheap, tier-3-frontier
+  features          Json     // flexible feature set per plan
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @db.Uuid
+  currentPlanId   String   @db.Uuid
+  status          String   @default("active") // active, past_due, suspended, canceled
+  planVersion     Int      @default(1) // versioning for plan changes
+  planChangedAt   DateTime?
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  currentPlan Plan @relation(fields: [currentPlanId], references: [id])
+
+  @@unique([tenantId]) // only one subscription per tenant
+  @@index([tenantId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model UsageMeter {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String   @db.Uuid
+  meterType          String   // mailbox_synced, llm_tokens, digests_sent
+  billingPeriodStart DateTime
+  billingPeriodEnd   DateTime
+  usageCount         BigInt   @default(0)
+  overageThreshold   BigInt
+  overageDetected    Boolean  @default(false) // flag to prevent duplicate events
+  lastIncrementedAt  DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([tenantId, meterType, billingPeriodStart, billingPeriodEnd])
+  @@index([tenantId, meterType])
+  @@index([billingPeriodStart])
+  @@map("usage_meters")
+}
+
+model SubscriptionBillingEvent {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @db.Uuid
+  eventType    String   // webhook_received, overage_detected, payment_failed, plan_changed
+  stripeEventId String?  @unique
+  payload      Json
+  processed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([stripeEventId])
+  @@index([processed])
+  @@map("subscription_billing_events")
+}

@@ -12,5 +12,7 @@ module.exports = {
   testEnvironment: 'node',
   moduleNameMapper: {
     '^src/(.*)$': '<rootDir>/$1',
+    '^@common/(.*)$': '<rootDir>/common/$1',
+    '^@database/(.*)$': '<rootDir>/database/$1',
   },
 };
