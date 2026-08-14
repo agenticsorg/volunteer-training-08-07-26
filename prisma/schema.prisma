@@ -297,3 +297,79 @@ model OutboxEvent {
   @@index([published])
   @@map("outbox_events")
 }
+
+// Classification context
+enum Category {
+  PERSONAL
+  WORK
+  MARKETING
+  FINANCE
+  HEALTH
+  SHOPPING
+  TRAVEL
+  SOCIAL
+  NEEDS_REPLY
+}
+
+model MessageLabel {
+  id              String    @id @default(cuid())
+  tenant_id       String
+  message_id      String
+  category        Category
+  confidence_score Float    @db.Decimal(3, 2) // 0.00-1.00
+  source_tier     String    // "rule", "cheap_llm", "frontier_llm"
+  classifier_version String
+  created_at      DateTime  @default(now())
+
+  ingested_message IngestedMessage @relation(fields: [message_id], references: [id], onDelete: Cascade)
+
+  @@unique([message_id, category])
+  @@index([tenant_id])
+  @@index([message_id])
+}
+
+model PipelineVersion {
+  id                    String    @id @default(cuid())
+  version               String    @unique
+  description           String?
+  rule_prompt_hash      String?
+  llm_model_tier        String    // "haiku", "sonnet", "opus"
+  cheap_llm_model       String    @default("claude-3-5-haiku-20241022")
+  frontier_llm_model    String    @default("claude-3-5-sonnet-20241022")
+  created_at            DateTime  @default(now())
+  deployed_at           DateTime?
+  canary_cohorts        Json      @default("[]") // array of tenant IDs or percentage slices
+  active_cohort_fraction Float    @default(0.0)  // 0.0-1.0
+  is_active             Boolean   @default(false)
+
+  @@index([is_active])
+  @@index([deployed_at])
+}
+
+model GoldenDataset {
+  id               String    @id @default(cuid())
+  external_message_id String
+  expected_labels  Json      // array of Category enum values
+  message_content  String?   @db.Text
+  created_at       DateTime  @default(now())
+  archived_at      DateTime?
+
+  @@index([archived_at])
+}
+
+model ShadowEvalRun {
+  id                      String    @id @default(cuid())
+  tenant_id               String
+  pipeline_version_from   String    // semver
+  pipeline_version_to     String    // semver (candidate)
+  eval_date               DateTime  @default(now())
+  per_category_metrics    Json      // { "PERSONAL": { precision: 0.9, recall: 0.85, f1: 0.87 }, ... }
+  regression_detected     Boolean   @default(false)
+  regression_details      Json?     // which categories regressed and by how much
+  approved_at             DateTime?
+  approval_notes          String?
+  created_at              DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([approved_at])
+}
