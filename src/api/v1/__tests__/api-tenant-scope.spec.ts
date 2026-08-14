@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 import { AppModule } from '../../../app.module';
 import { PrismaService } from '../../../database/prisma.service';
 
@@ -101,8 +102,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
   describe('Defense-in-Depth: API Layer + Database RLS', () => {
     describe('Authentication enforcement', () => {
       it('should deny requests without API key', async () => {
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/messages`)
           .set('x-tenant-id', tenant1Id);
 
@@ -110,8 +110,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
       });
 
       it('should deny requests without tenant ID', async () => {
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/messages`)
           .set('x-api-key', 'test-key');
 
@@ -119,8 +118,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
       });
 
       it('should accept request with both headers', async () => {
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/messages`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant1Id);
@@ -133,8 +131,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
     describe('Tenant-scoping enforcement (API layer blocks cross-tenant path access)', () => {
       it('should deny Tenant A accessing Tenant B message via path parameter', async () => {
         // Tenant A authenticates but tries to access Tenant B's message ID
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/messages/${message2Id}`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant1Id);
@@ -145,8 +142,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
 
       it('should deny Tenant B accessing Tenant A tenant config via path parameter', async () => {
         // Tenant B authenticates but tries to access Tenant A config
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/tenant-configuration/${tenant1Id}`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant2Id);
@@ -157,8 +153,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
 
       it('should deny Tenant B accessing Tenant A billing via path parameter', async () => {
         // Tenant B tries to access Tenant A billing
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/billing/${tenant1Id}`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant2Id);
@@ -170,8 +165,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
     describe('Defense-in-depth: API layer + RLS cooperation', () => {
       it('should verify Tenant A can access own messages', async () => {
         // Tenant A accesses own message - should work
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/messages/${message1Id}`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant1Id);
@@ -182,8 +176,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
 
       it('should verify Tenant B cannot access Tenant A even with header override attempt', async () => {
         // Attempt header injection attack (client tries to add x-override-tenant)
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/messages/${message1Id}`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant2Id) // Tenant B authentic context
@@ -195,8 +188,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
 
       it('should verify Tenant A denied when accessing mismatched config tenantId', async () => {
         // Even though Tenant A is authentic, trying to access Tenant B config path
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .get(`/v1/tenant-configuration/${tenant2Id}`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant1Id);
@@ -208,8 +200,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
     describe('Correction endpoint tenant scoping', () => {
       it('should deny Tenant A submitting correction for Tenant B message', async () => {
         // Tenant A tries to submit correction for Tenant B's message
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .post(`/v1/messages/${message2Id}/corrections`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant1Id)
@@ -228,8 +219,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
     describe('Mailbox connection tenant scoping', () => {
       it('should deny Tenant A disconnecting Tenant B mailbox', async () => {
         // Tenant A tries to disconnect Tenant B's mailbox connection
-        const response = await app
-          .getHttpServer()
+        const response = await request(app.getHttpServer())
           .delete(`/v1/mailbox-connections/tenant-b@example.com`)
           .set('x-api-key', 'test-key')
           .set('x-tenant-id', tenant1Id);
@@ -248,9 +238,8 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
 
     it('should confirm real NestJS HTTP client is functional', async () => {
       // Verify we can make a real HTTP request through NestJS routing
-      const response = await app
-        .getHttpServer()
-        .get('/health')
+      const response = await request(app.getHttpServer())
+          .get('/health')
         .send();
 
       // Health endpoint exists (or 404 if not - point is request went through NestJS)
