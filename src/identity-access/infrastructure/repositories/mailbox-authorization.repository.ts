@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '@database/prisma.service';
 import { MailboxAuthorization } from '../../domain/aggregates/mailbox-authorization';
 import { ScopeSet } from '../../domain/value-objects/scope-set';
 
 @Injectable()
 export class MailboxAuthorizationRepository {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaService) {}
 
   async save(
     tenantId: string,
