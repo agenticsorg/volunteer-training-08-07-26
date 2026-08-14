@@ -1,0 +1,18 @@
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Claude Code environment artifacts (local to this dev environment)
+.claude/
+.mcp.json
+CLAUDE.md
+
+# Ruflo / claude-flow environment artifacts (local to this dev environment)
+.claude-flow/
+.agents/
+.swarm/
+ruvector.db
