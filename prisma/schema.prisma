@@ -14,28 +14,28 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
+  users                 User[]
   mailboxAuthorizations MailboxAuthorization[]
-  mailboxConnections MailboxConnection[]
-  ingestedMessages IngestedMessage[]
-  messageBodyRefs MessageBodyRef[]
-  syncEventLogs SyncEventLog[]
-  outboxEvents OutboxEvent[]
-  senderProfiles SenderProfile[]
+  mailboxConnections    MailboxConnection[]
+  ingestedMessages      IngestedMessage[]
+  messageBodyRefs       MessageBodyRef[]
+  syncEventLogs         SyncEventLog[]
+  outboxEvents          OutboxEvent[]
+  senderProfiles        SenderProfile[]
 
   @@map("tenants")
 }
 
 model User {
-  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId  String   @db.Uuid
-  email     String
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId     String   @db.Uuid
+  email        String
   authProvider String? // oauth_provider used for authentication
-  authSubject String? // subject claim from OAuth provider
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  authSubject  String? // subject claim from OAuth provider
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   mailboxAuthorizations MailboxAuthorization[]
 
   @@unique([tenantId, email])
@@ -44,21 +44,21 @@ model User {
 }
 
 model MailboxAuthorization {
-  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId             String   @db.Uuid
-  userId               String   @db.Uuid
-  mailboxId            String   // platform-assigned mailbox ID
-  platform             String   // gmail, outlook
-  scopeSet             Json     // array of minimal scopes
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String    @db.Uuid
+  userId               String    @db.Uuid
+  mailboxId            String // platform-assigned mailbox ID
+  platform             String // gmail, outlook
+  scopeSet             Json // array of minimal scopes
   consentGrantedAt     DateTime
   lastTokenRefreshedAt DateTime?
-  credentialHandle     String   // opaque reference to vault, never raw token
-  status               String   @default("active") // active, revoked, expired
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  credentialHandle     String // opaque reference to vault, never raw token
+  status               String    @default("active") // active, revoked, expired
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   consentGrants ConsentGrant[]
 
   @@unique([tenantId, userId, mailboxId, platform])
@@ -72,9 +72,9 @@ model MailboxAuthorization {
 model ConsentGrant {
   id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   mailboxAuthorizationId String   @db.Uuid
-  scopeSet               Json     // array of scopes granted
+  scopeSet               Json // array of scopes granted
   grantedAt              DateTime
-  consentProofUrl        String?  // URL for compliance audit trail
+  consentProofUrl        String? // URL for compliance audit trail
   createdAt              DateTime @default(now())
 
   mailboxAuthorization MailboxAuthorization @relation(fields: [mailboxAuthorizationId], references: [id], onDelete: Cascade)
@@ -84,15 +84,15 @@ model ConsentGrant {
 }
 
 model OAuthProvider {
-  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  platform              String   @unique // gmail, outlook
-  clientId              String
-  clientSecretVaultRef  String   // opaque reference to vault
-  redirectUri           String
-  minScopes             Json     // minimum required scopes per platform
-  adminScopes           Json?    // optional admin/application-level scopes
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform             String   @unique // gmail, outlook
+  clientId             String
+  clientSecretVaultRef String // opaque reference to vault
+  redirectUri          String
+  minScopes            Json // minimum required scopes per platform
+  adminScopes          Json? // optional admin/application-level scopes
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@map("oauth_providers")
 }
@@ -124,15 +124,15 @@ model Metrics {
 }
 
 model Plan {
-  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name              String   @unique
-  stripePriceId     String   @unique
-  mailboxLimit      Int
-  llmTierCeiling    String   // tier-1-only, tier-2-cheap, tier-3-frontier
-  features          Json     // flexible feature set per plan
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name           String   @unique
+  stripePriceId  String   @unique
+  mailboxLimit   Int
+  llmTierCeiling String // tier-1-only, tier-2-cheap, tier-3-frontier
+  features       Json // flexible feature set per plan
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   subscriptions Subscription[]
 
@@ -140,16 +140,16 @@ model Plan {
 }
 
 model Subscription {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId        String   @db.Uuid
-  currentPlanId   String   @db.Uuid
-  status          String   @default("active") // active, past_due, suspended, canceled
-  planVersion     Int      @default(1) // versioning for plan changes
-  planChangedAt   DateTime?
-  stripeCustomerId String?
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String    @db.Uuid
+  currentPlanId        String    @db.Uuid
+  status               String    @default("active") // active, past_due, suspended, canceled
+  planVersion          Int       @default(1) // versioning for plan changes
+  planChangedAt        DateTime?
+  stripeCustomerId     String?
   stripeSubscriptionId String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   currentPlan Plan @relation(fields: [currentPlanId], references: [id])
 
@@ -160,17 +160,17 @@ model Subscription {
 }
 
 model UsageMeter {
-  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId           String   @db.Uuid
-  meterType          String   // mailbox_synced, llm_tokens, digests_sent
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId           String    @db.Uuid
+  meterType          String // mailbox_synced, llm_tokens, digests_sent
   billingPeriodStart DateTime
   billingPeriodEnd   DateTime
-  usageCount         BigInt   @default(0)
+  usageCount         BigInt    @default(0)
   overageThreshold   BigInt
-  overageDetected    Boolean  @default(false) // flag to prevent duplicate events
+  overageDetected    Boolean   @default(false) // flag to prevent duplicate events
   lastIncrementedAt  DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@unique([tenantId, meterType, billingPeriodStart, billingPeriodEnd])
   @@index([tenantId, meterType])
@@ -179,13 +179,13 @@ model UsageMeter {
 }
 
 model SubscriptionBillingEvent {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenantId     String   @db.Uuid
-  eventType    String   // webhook_received, overage_detected, payment_failed, plan_changed
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId      String   @db.Uuid
+  eventType     String // webhook_received, overage_detected, payment_failed, plan_changed
   stripeEventId String?  @unique
-  payload      Json
-  processed    Boolean  @default(false)
-  createdAt    DateTime @default(now())
+  payload       Json
+  processed     Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
   @@index([tenantId])
   @@index([stripeEventId])
@@ -196,28 +196,28 @@ model SubscriptionBillingEvent {
 // Mailbox Ingestion bounded context
 
 model MailboxConnection {
-  id                    String   @id @default(cuid())
-  tenantId              String   @map("tenant_id")
-  mailboxId             String   @map("mailbox_id") // platform-assigned (Gmail address or Outlook OID)
-  platform              String   // "gmail" | "outlook"
-  status                String   @default("active") // active|sync_failed|revoked
-  
+  id        String @id @default(cuid())
+  tenantId  String @map("tenant_id") @db.Uuid
+  mailboxId String @map("mailbox_id") // platform-assigned (Gmail address or Outlook OID)
+  platform  String // "gmail" | "outlook"
+  status    String @default("active") // active|sync_failed|revoked
+
   // Watch/Subscription state
-  watchSubscriptionId   String?  @map("watch_subscription_id")
-  watchExpiresAt        DateTime? @map("watch_expires_at")
-  syncCursorValue       String?  @map("sync_cursor_value") // Gmail historyId or Outlook deltaLink
-  
-  credentialHandleId    String   @map("credential_handle_id") // FK to MailboxAuthorization.credentialHandle
-  lastWebhookAt         DateTime? @map("last_webhook_at")
-  lastSyncAt            DateTime? @map("last_sync_at")
-  syncFailureCount      Int      @default(0) @map("sync_failure_count")
-  
-  createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
-  
-  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ingestedMessages      IngestedMessage[]
-  syncEventLogs         SyncEventLog[]
+  watchSubscriptionId String?   @map("watch_subscription_id")
+  watchExpiresAt      DateTime? @map("watch_expires_at")
+  syncCursorValue     String?   @map("sync_cursor_value") // Gmail historyId or Outlook deltaLink
+
+  credentialHandleId String    @map("credential_handle_id") // FK to MailboxAuthorization.credentialHandle
+  lastWebhookAt      DateTime? @map("last_webhook_at")
+  lastSyncAt         DateTime? @map("last_sync_at")
+  syncFailureCount   Int       @default(0) @map("sync_failure_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ingestedMessages IngestedMessage[]
+  syncEventLogs    SyncEventLog[]
 
   @@unique([tenantId, mailboxId, platform])
   @@index([tenantId])
@@ -226,23 +226,23 @@ model MailboxConnection {
 }
 
 model IngestedMessage {
-  id                    String   @id @default(cuid())
-  tenantId              String   @map("tenant_id")
-  messageId             String   @map("message_id") // internal UUID
-  mailboxId             String   @map("mailbox_id") // FK to MailboxConnection
-  mailboxConnectionId   String?  @map("mailbox_connection_id")
-  platformMessageId     String   @map("platform_message_id") // Gmail msg ID or Outlook msg ID
-  platform              String   // "gmail" | "outlook"
+  id                  String  @id @default(cuid())
+  tenantId            String  @map("tenant_id") @db.Uuid
+  messageId           String  @map("message_id") // internal UUID
+  mailboxId           String  @map("mailbox_id") // FK to MailboxConnection
+  mailboxConnectionId String? @map("mailbox_connection_id")
+  platformMessageId   String  @map("platform_message_id") // Gmail msg ID or Outlook msg ID
+  platform            String // "gmail" | "outlook"
 
-  normalizedEnvelope    Json     @map("normalized_envelope") // MessageEnvelope value object
-  bodyRefId             String?  @map("body_ref_id") // FK to MessageBodyRef
+  normalizedEnvelope Json    @map("normalized_envelope") // MessageEnvelope value object
+  bodyRefId          String? @map("body_ref_id") // FK to MessageBodyRef
 
-  createdAt             DateTime @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  mailboxConnection     MailboxConnection? @relation(fields: [mailboxConnectionId], references: [id], onDelete: Cascade)
-  bodyRef               MessageBodyRef? @relation(fields: [bodyRefId], references: [id])
-  messageLabels         MessageLabel[]
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mailboxConnection MailboxConnection? @relation(fields: [mailboxConnectionId], references: [id], onDelete: Cascade)
+  bodyRef           MessageBodyRef?    @relation(fields: [bodyRefId], references: [id])
+  messageLabels     MessageLabel[]
 
   @@unique([tenantId, messageId])
   @@unique([tenantId, platformMessageId, platform, mailboxId])
@@ -253,17 +253,17 @@ model IngestedMessage {
 }
 
 model MessageBodyRef {
-  id                    String   @id @default(cuid())
-  tenantId              String   @map("tenant_id")
-  messageId             String   @map("message_id") // FK to IngestedMessage
-  bodyHash              String   @map("body_hash") // SHA256 of body
-  bodyStorageRef        String   @map("body_storage_ref") // S3 URI or file path
-  ttlExpiresAt          DateTime @map("ttl_expires_at") // When body should be deleted
-  
-  createdAt             DateTime @default(now()) @map("created_at")
-  
-  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ingestedMessages      IngestedMessage[]
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id") @db.Uuid
+  messageId      String   @map("message_id") // FK to IngestedMessage
+  bodyHash       String   @map("body_hash") // SHA256 of body
+  bodyStorageRef String   @map("body_storage_ref") // S3 URI or file path
+  ttlExpiresAt   DateTime @map("ttl_expires_at") // When body should be deleted
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ingestedMessages IngestedMessage[]
 
   @@index([tenantId])
   @@index([ttlExpiresAt])
@@ -271,16 +271,16 @@ model MessageBodyRef {
 }
 
 model SyncEventLog {
-  id                    String   @id @default(cuid())
-  tenantId              String   @map("tenant_id")
-  mailboxConnectionId   String   @map("mailbox_connection_id")
-  eventType             String   // webhook_received|delta_sync_completed|renewal_failed|rate_limited
-  details               Json     @default("{}")
-  
-  createdAt             DateTime @default(now()) @map("created_at")
-  
-  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  mailboxConnection     MailboxConnection @relation(fields: [mailboxConnectionId], references: [id], onDelete: Cascade)
+  id                  String @id @default(cuid())
+  tenantId            String @map("tenant_id") @db.Uuid
+  mailboxConnectionId String @map("mailbox_connection_id")
+  eventType           String // webhook_received|delta_sync_completed|renewal_failed|rate_limited
+  details             Json   @default("{}")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant            Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mailboxConnection MailboxConnection @relation(fields: [mailboxConnectionId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([mailboxConnectionId])
@@ -290,18 +290,18 @@ model SyncEventLog {
 
 // Outbox for transactional event publishing
 model OutboxEvent {
-  id                    String   @id @default(cuid())
-  tenantId              String   @map("tenant_id")
-  aggregateId           String   @map("aggregate_id")
-  aggregateType         String   @map("aggregate_type") // IngestedMessage
-  eventType             String   @map("event_type") // MessageIngested
-  payload               Json
-  published             Boolean  @default(false)
-  
-  createdAt             DateTime @default(now()) @map("created_at")
-  publishedAt           DateTime? @map("published_at")
-  
-  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id            String  @id @default(cuid())
+  tenantId      String  @map("tenant_id") @db.Uuid
+  aggregateId   String  @map("aggregate_id")
+  aggregateType String  @map("aggregate_type") // IngestedMessage
+  eventType     String  @map("event_type") // MessageIngested
+  payload       Json
+  published     Boolean @default(false)
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  publishedAt DateTime? @map("published_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([published])
@@ -322,14 +322,14 @@ enum Category {
 }
 
 model MessageLabel {
-  id              String    @id @default(cuid())
-  tenant_id       String
-  message_id      String
-  category        Category
-  confidence_score Decimal    @db.Decimal(3, 2) // 0.00-1.00
-  source_tier     String    // "rule", "cheap_llm", "frontier_llm"
+  id                 String   @id @default(cuid())
+  tenant_id          String
+  message_id         String
+  category           Category
+  confidence_score   Decimal  @db.Decimal(3, 2) // 0.00-1.00
+  source_tier        String // "rule", "cheap_llm", "frontier_llm"
   classifier_version String
-  created_at      DateTime  @default(now())
+  created_at         DateTime @default(now())
 
   ingested_message IngestedMessage @relation(fields: [message_id], references: [id], onDelete: Cascade)
 
@@ -340,46 +340,46 @@ model MessageLabel {
 }
 
 model PipelineVersion {
-  id                    String    @id @default(cuid())
-  version               String    @unique
-  description           String?
-  rule_prompt_hash      String?
-  llm_model_tier        String    // "haiku", "sonnet", "opus"
-  cheap_llm_model       String    @default("claude-3-5-haiku-20241022")
-  frontier_llm_model    String    @default("claude-3-5-sonnet-20241022")
-  created_at            DateTime  @default(now())
-  deployed_at           DateTime?
-  canary_cohorts        Json      @default("[]") // array of tenant IDs or percentage slices
-  active_cohort_fraction Float    @default(0.0)  // 0.0-1.0
-  is_active             Boolean   @default(false)
+  id                     String    @id @default(cuid())
+  version                String    @unique
+  description            String?
+  rule_prompt_hash       String?
+  llm_model_tier         String // "haiku", "sonnet", "opus"
+  cheap_llm_model        String    @default("claude-3-5-haiku-20241022")
+  frontier_llm_model     String    @default("claude-3-5-sonnet-20241022")
+  created_at             DateTime  @default(now())
+  deployed_at            DateTime?
+  canary_cohorts         Json      @default("[]") // array of tenant IDs or percentage slices
+  active_cohort_fraction Float     @default(0.0) // 0.0-1.0
+  is_active              Boolean   @default(false)
 
   @@index([is_active])
   @@index([deployed_at])
 }
 
 model GoldenDataset {
-  id               String    @id @default(cuid())
+  id                  String    @id @default(cuid())
   external_message_id String
-  expected_labels  Json      // array of Category enum values
-  message_content  String?   @db.Text
-  created_at       DateTime  @default(now())
-  archived_at      DateTime?
+  expected_labels     Json // array of Category enum values
+  message_content     String?   @db.Text
+  created_at          DateTime  @default(now())
+  archived_at         DateTime?
 
   @@index([archived_at])
 }
 
 model ShadowEvalRun {
-  id                      String    @id @default(cuid())
-  tenant_id               String
-  pipeline_version_from   String    // semver
-  pipeline_version_to     String    // semver (candidate)
-  eval_date               DateTime  @default(now())
-  per_category_metrics    Json      // { "PERSONAL": { precision: 0.9, recall: 0.85, f1: 0.87 }, ... }
-  regression_detected     Boolean   @default(false)
-  regression_details      Json?     // which categories regressed and by how much
-  approved_at             DateTime?
-  approval_notes          String?
-  created_at              DateTime  @default(now())
+  id                    String    @id @default(cuid())
+  tenant_id             String
+  pipeline_version_from String // semver
+  pipeline_version_to   String // semver (candidate)
+  eval_date             DateTime  @default(now())
+  per_category_metrics  Json // { "PERSONAL": { precision: 0.9, recall: 0.85, f1: 0.87 }, ... }
+  regression_detected   Boolean   @default(false)
+  regression_details    Json? // which categories regressed and by how much
+  approved_at           DateTime?
+  approval_notes        String?
+  created_at            DateTime  @default(now())
 
   @@index([tenant_id])
   @@index([approved_at])
@@ -391,19 +391,19 @@ model ShadowEvalRun {
 // ============================================================================
 
 model SenderProfile {
-  id            String   @id @default(cuid())
-  tenant_id     String   @db.Uuid
-  mailbox_id    String
-  sender_address String
-  classification Json    // ContactClassification JSON
-  confidence    Float    @default(0.0)
-  interaction_count Int  @default(0)
-  bidirectional_count Int @default(0)
-  is_vip        Boolean  @default(false)
-  vip_auto_promoted Boolean @default(false)
-  last_interaction DateTime @default(now())
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  tenant_id           String   @db.Uuid
+  mailbox_id          String
+  sender_address      String
+  classification      Json // ContactClassification JSON
+  confidence          Float    @default(0.0)
+  interaction_count   Int      @default(0)
+  bidirectional_count Int      @default(0)
+  is_vip              Boolean  @default(false)
+  vip_auto_promoted   Boolean  @default(false)
+  last_interaction    DateTime @default(now())
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
 
@@ -418,16 +418,16 @@ model SenderProfile {
 // ============================================================================
 
 model ThreatAssessment {
-  id                String   @id @default(uuid())
-  tenant_id         String   @db.Uuid
-  message_id        String   @db.Uuid
-  auth_signal       Json?    // AuthenticationSignal JSON
-  lookalike_score   Json?    // LookalikeScore JSON
+  id                    String   @id @default(uuid())
+  tenant_id             String   @db.Uuid
+  message_id            String   @db.Uuid
+  auth_signal           Json? // AuthenticationSignal JSON
+  lookalike_score       Json? // LookalikeScore JSON
   intent_classification Json? // IntentClassification JSON
-  quarantine_decision String  @default("none") // none | soft_flag | locked_quarantine
-  quarantine_locked Boolean  @default(false)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  quarantine_decision   String   @default("none") // none | soft_flag | locked_quarantine
+  quarantine_locked     Boolean  @default(false)
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
 
   @@unique([tenant_id, message_id])
   @@index([tenant_id, quarantine_locked])
@@ -435,11 +435,11 @@ model ThreatAssessment {
 }
 
 model BrandWatchlist {
-  id            String   @id @default(uuid())
-  domain        String   @unique
-  brand_name    String
-  impersonation_risk_level String @default("medium") // low | medium | high
-  last_updated  DateTime @default(now())
+  id                       String   @id @default(uuid())
+  domain                   String   @unique
+  brand_name               String
+  impersonation_risk_level String   @default("medium") // low | medium | high
+  last_updated             DateTime @default(now())
 
   @@index([domain])
   @@map("brand_watchlist")
@@ -450,13 +450,13 @@ model BrandWatchlist {
 // ============================================================================
 
 model MessagePriority {
-  id            String   @id @default(uuid())
-  tenant_id     String   @db.Uuid
-  message_id    String   @db.Uuid
-  priority_score Float   @default(0)
-  components    Json     // ScoreComponent[]
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id             String   @id @default(uuid())
+  tenant_id      String   @db.Uuid
+  message_id     String   @db.Uuid
+  priority_score Float    @default(0)
+  components     Json // ScoreComponent[]
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   @@unique([tenant_id, message_id])
   @@index([tenant_id, priority_score])
@@ -464,15 +464,15 @@ model MessagePriority {
 }
 
 model ScoringWeights {
-  id            String   @id @default(uuid())
-  tenant_id     String   @db.Uuid @unique
-  vip_weight    Float    @default(0.25)
-  frequency_weight Float @default(0.20)
-  urgency_weight Float   @default(0.30)
-  calendar_weight Float  @default(0.10)
-  needs_reply_aging_weight Float @default(0.15)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                       String   @id @default(uuid())
+  tenant_id                String   @unique @db.Uuid
+  vip_weight               Float    @default(0.25)
+  frequency_weight         Float    @default(0.20)
+  urgency_weight           Float    @default(0.30)
+  calendar_weight          Float    @default(0.10)
+  needs_reply_aging_weight Float    @default(0.15)
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
 
   @@index([tenant_id])
   @@map("scoring_weights")
@@ -483,13 +483,13 @@ model ScoringWeights {
 // ============================================================================
 
 model MessageWriteBackState {
-  id            String   @id @default(uuid())
-  tenant_id     String   @db.Uuid
-  mailbox_id    String
-  message_id    String   @db.Uuid
-  facets        Json     // Map<facet_type, FacetApplication>
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id         String   @id @default(uuid())
+  tenant_id  String   @db.Uuid
+  mailbox_id String
+  message_id String   @db.Uuid
+  facets     Json // Map<facet_type, FacetApplication>
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@unique([tenant_id, mailbox_id, message_id])
   @@index([tenant_id, mailbox_id])
@@ -501,24 +501,24 @@ model MessageWriteBackState {
 // ============================================================================
 
 model CorrectionRecord {
-  id            String   @id @default(uuid())
-  tenant_id     String   @db.Uuid
-  message_id    String   @db.Uuid
-  verdict       Json     // VerdictSnapshot
-  source        String   @default("explicit_user_action") // passive_inferred | explicit_user_action | admin_override
-  state         String   @default("confirmed") // candidate | confirmed | processed
-  created_at    DateTime @default(now())
+  id         String   @id @default(uuid())
+  tenant_id  String   @db.Uuid
+  message_id String   @db.Uuid
+  verdict    Json // VerdictSnapshot
+  source     String   @default("explicit_user_action") // passive_inferred | explicit_user_action | admin_override
+  state      String   @default("confirmed") // candidate | confirmed | processed
+  created_at DateTime @default(now())
 
   @@index([tenant_id, state])
   @@map("correction_records")
 }
 
 model SenderReputationCache {
-  id            String   @id @default(uuid())
-  tenant_id     String   @db.Uuid
-  sender_domain String
-  category_confidence Json @default("{}")
-  last_updated  DateTime @default(now())
+  id                  String   @id @default(uuid())
+  tenant_id           String   @db.Uuid
+  sender_domain       String
+  category_confidence Json     @default("{}")
+  last_updated        DateTime @default(now())
 
   @@unique([tenant_id, sender_domain])
   @@index([tenant_id])
@@ -530,13 +530,13 @@ model SenderReputationCache {
 // ============================================================================
 
 model NotificationSubscription {
-  id            String   @id @default(uuid())
-  tenant_id     String   @db.Uuid
-  user_id       String   @db.Uuid
-  preferences   Json     // Map<event_type, preference>
+  id                  String   @id @default(uuid())
+  tenant_id           String   @db.Uuid
+  user_id             String   @db.Uuid
+  preferences         Json // Map<event_type, preference>
   authorized_channels String[]
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
   @@unique([tenant_id, user_id])
   @@index([tenant_id])
@@ -544,14 +544,14 @@ model NotificationSubscription {
 }
 
 model AlertDispatch {
-  id            String   @id @default(uuid())
-  tenant_id     String   @db.Uuid
-  user_id       String   @db.Uuid
-  alert_id      String   @unique
-  category      String
-  dispatched_at DateTime @default(now())
+  id              String   @id @default(uuid())
+  tenant_id       String   @db.Uuid
+  user_id         String   @db.Uuid
+  alert_id        String   @unique
+  category        String
+  dispatched_at   DateTime @default(now())
   cool_down_until DateTime
-  created_at    DateTime @default(now())
+  created_at      DateTime @default(now())
 
   @@index([tenant_id, user_id, category])
   @@map("alert_dispatches")
