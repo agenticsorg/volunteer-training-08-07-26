@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { HealthModule } from './health/health.module';
-import { SubscriptionModule } from './tenant-subscription/subscription.module';
+import { TenantSubscriptionModule } from './tenant-subscription/tenant-subscription.module';
 import { IdentityAccessModule } from './identity-access/identity-access.module';
 import { MailboxIngestionModule } from './mailbox-ingestion/mailbox-ingestion.module';
 import { ClassificationModule } from './classification/classification.module';
@@ -19,7 +19,7 @@ import { ApiV1Module } from './api/v1/api.module';
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot({ maxListeners: 100 }),
     HealthModule,
-    SubscriptionModule,
+    TenantSubscriptionModule,
     IdentityAccessModule,
     MailboxIngestionModule,
     ClassificationModule,
