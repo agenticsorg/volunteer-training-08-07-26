@@ -4,6 +4,42 @@ import { ContactsApiAdapter } from '../infrastructure/adapters/contacts-api.adap
 import { AutomatedSenderSignal, ContactClassification } from '../domain/value-objects/contact-classification';
 import { InteractionEvent } from '../domain/entities/interaction-event.entity';
 
+// Mock PrismaService for tests (in-memory store)
+class MockPrismaService {
+  private store = new Map<string, any>();
+
+  senderProfile = {
+    upsert: jest.fn(async (args: any) => {
+      const key = `${args.where.tenant_id_mailbox_id_sender_address.tenant_id}:${args.where.tenant_id_mailbox_id_sender_address.mailbox_id}:${args.where.tenant_id_mailbox_id_sender_address.sender_address}`;
+      const data = args.update || args.create;
+      this.store.set(key, { ...args.where.tenant_id_mailbox_id_sender_address, ...data });
+      return this.store.get(key);
+    }),
+    findUnique: jest.fn(async (args: any) => {
+      const key = `${args.where.tenant_id_mailbox_id_sender_address.tenant_id}:${args.where.tenant_id_mailbox_id_sender_address.mailbox_id}:${args.where.tenant_id_mailbox_id_sender_address.sender_address}`;
+      return this.store.get(key) || null;
+    }),
+    findMany: jest.fn(async (args: any) => {
+      const results: any[] = [];
+      for (const [key, value] of this.store.entries()) {
+        if (key.startsWith(`${args.where.tenant_id}:${args.where.mailbox_id}:`)) {
+          results.push(value);
+        }
+      }
+      return results;
+    }),
+    deleteMany: jest.fn(async (args: any) => {
+      const prefix = `${args.where.tenant_id}:`;
+      for (const [key] of this.store.entries()) {
+        if (key.startsWith(prefix)) {
+          this.store.delete(key);
+        }
+      }
+      return { count: this.store.size };
+    }),
+  };
+}
+
 describe('Contact Graph - Stage 5', () => {
   describe('SenderProfile Aggregate', () => {
     it('should compute weighted ContactClassification from multiple signals', () => {
@@ -241,7 +277,8 @@ describe('Contact Graph - Stage 5', () => {
 
   describe('SenderProfileRepository', () => {
     it('should load/save by (TenantId, MailboxId, SenderAddress) composite key', async () => {
-      const repository = new SenderProfileRepository();
+      const mockPrisma = new MockPrismaService();
+      const repository = new SenderProfileRepository(mockPrisma as any);
 
       const profile = new SenderProfile('tenant-1', 'mailbox-1', 'alice@example.com');
       profile.updateClassification({
@@ -260,13 +297,15 @@ describe('Contact Graph - Stage 5', () => {
     });
 
     it('should return null if sender profile does not exist', async () => {
-      const repository = new SenderProfileRepository();
+      const mockPrisma = new MockPrismaService();
+      const repository = new SenderProfileRepository(mockPrisma as any);
       const loaded = await repository.loadBySender('tenant-1', 'mailbox-1', 'unknown@example.com');
       expect(loaded).toBeNull();
     });
 
     it('should handle concurrent saves to the same profile', async () => {
-      const repository = new SenderProfileRepository();
+      const mockPrisma = new MockPrismaService();
+      const repository = new SenderProfileRepository(mockPrisma as any);
 
       const profile = new SenderProfile('tenant-1', 'mailbox-1', 'alice@example.com');
 
