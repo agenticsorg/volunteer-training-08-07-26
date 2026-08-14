@@ -162,8 +162,7 @@ describe('API V1 - Real End-to-End API Tests (via AppModule + Controller)', () =
         .set('x-api-key', 'test-key')
         .set('x-tenant-id', tenantId);
 
-      // Accept 2xx/4xx/5xx - the point is the HTTP request went through the real AppModule
-      expect([200, 400, 404, 500]).toContain(response.status);
+      expect([200, 400, 404]).toContain(response.status);
     });
 
     it('should update tenant configuration through real API endpoint', async () => {
