@@ -16,7 +16,7 @@ export class MessageWriteBackState {
 
   isIdempotent(facet_type: string, desired_value: any): boolean {
     const facet = this.facets.get(facet_type);
-    return facet && JSON.stringify(facet.desired_value) === JSON.stringify(desired_value);
+    return !!(facet && JSON.stringify(facet.desired_value) === JSON.stringify(desired_value));
   }
 
   recordFacetApplication(facet_type: string, facet: FacetApplication): void {
@@ -26,6 +26,6 @@ export class MessageWriteBackState {
   shouldSuppressFacetDisplay(facet_type: string): boolean {
     // If quarantine is active, suppress normal facet display
     const threat_facet = this.facets.get('threat');
-    return threat_facet && threat_facet.desired_value?.quarantine_locked === true && facet_type !== 'threat';
+    return !!(threat_facet && threat_facet.desired_value?.quarantine_locked === true && facet_type !== 'threat');
   }
 }
