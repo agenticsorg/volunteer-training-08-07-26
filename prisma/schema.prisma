@@ -15,6 +15,7 @@ model Tenant {
   updatedAt DateTime @updatedAt
 
   users User[]
+  mailboxAuthorizations MailboxAuthorization[]
 
   @@map("tenants")
 }
@@ -23,14 +24,71 @@ model User {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenantId  String   @db.Uuid
   email     String
+  authProvider String? // oauth_provider used for authentication
+  authSubject String? // subject claim from OAuth provider
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mailboxAuthorizations MailboxAuthorization[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
   @@map("users")
+}
+
+model MailboxAuthorization {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId             String   @db.Uuid
+  userId               String   @db.Uuid
+  mailboxId            String   // platform-assigned mailbox ID
+  platform             String   // gmail, outlook
+  scopeSet             Json     // array of minimal scopes
+  consentGrantedAt     DateTime
+  lastTokenRefreshedAt DateTime?
+  credentialHandle     String   // opaque reference to vault, never raw token
+  status               String   @default("active") // active, revoked, expired
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  consentGrants ConsentGrant[]
+
+  @@unique([tenantId, userId, mailboxId, platform])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([mailboxId])
+  @@index([status])
+  @@map("mailbox_authorizations")
+}
+
+model ConsentGrant {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  mailboxAuthorizationId String   @db.Uuid
+  scopeSet               Json     // array of scopes granted
+  grantedAt              DateTime
+  consentProofUrl        String?  // URL for compliance audit trail
+  createdAt              DateTime @default(now())
+
+  mailboxAuthorization MailboxAuthorization @relation(fields: [mailboxAuthorizationId], references: [id], onDelete: Cascade)
+
+  @@index([mailboxAuthorizationId])
+  @@map("consent_grants")
+}
+
+model OAuthProvider {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  platform              String   @unique // gmail, outlook
+  clientId              String
+  clientSecretVaultRef  String   // opaque reference to vault
+  redirectUri           String
+  minScopes             Json     // minimum required scopes per platform
+  adminScopes           Json?    // optional admin/application-level scopes
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("oauth_providers")
 }
 
 // Placeholder tables for future stages

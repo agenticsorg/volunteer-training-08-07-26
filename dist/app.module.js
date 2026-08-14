@@ -17,6 +17,7 @@ const queue_module_1 = require("./queue/queue.module");
 const database_module_1 = require("./database/database.module");
 const tenant_context_interceptor_1 = require("./common/interceptors/tenant-context.interceptor");
 const tenant_subscription_module_1 = require("./tenant-subscription/tenant-subscription.module");
+const identity_access_module_1 = require("./identity-access/identity-access.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,6 +34,7 @@ exports.AppModule = AppModule = __decorate([
             observability_module_1.ObservabilityModule,
             queue_module_1.QueueModule,
             tenant_subscription_module_1.TenantSubscriptionModule,
+            identity_access_module_1.IdentityAccessModule,
         ],
         providers: [
             {
