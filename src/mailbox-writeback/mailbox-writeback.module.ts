@@ -1,7 +1,21 @@
 import { Module } from '@nestjs/common';
+import { MessageWriteBackService } from './application/services/message-writeback.service';
+import { MessageWriteBackStateRepository } from './infrastructure/repositories/message-writeback-state.repository';
+import { GmailWriteBackAdapter } from './infrastructure/adapters/gmail-writeback.adapter';
+import { OutlookWriteBackAdapter } from './infrastructure/adapters/outlook-writeback.adapter';
 
 @Module({
-  providers: [],
-  exports: [],
+  providers: [
+    MessageWriteBackService,
+    MessageWriteBackStateRepository,
+    GmailWriteBackAdapter,
+    OutlookWriteBackAdapter,
+  ],
+  exports: [
+    MessageWriteBackService,
+    MessageWriteBackStateRepository,
+    GmailWriteBackAdapter,
+    OutlookWriteBackAdapter,
+  ],
 })
 export class MailboxWritebackModule {}
