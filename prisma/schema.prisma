@@ -510,6 +510,7 @@ model CorrectionRecord {
   created_at    DateTime @default(now())
 
   @@index([tenant_id, state])
+  @@map("correction_records")
 }
 
 model SenderReputationCache {
@@ -521,6 +522,7 @@ model SenderReputationCache {
 
   @@unique([tenant_id, sender_domain])
   @@index([tenant_id])
+  @@map("sender_reputation_caches")
 }
 
 // ============================================================================
@@ -538,6 +540,7 @@ model NotificationSubscription {
 
   @@unique([tenant_id, user_id])
   @@index([tenant_id])
+  @@map("notification_subscriptions")
 }
 
 model AlertDispatch {
@@ -551,6 +554,7 @@ model AlertDispatch {
   created_at    DateTime @default(now())
 
   @@index([tenant_id, user_id, category])
+  @@map("alert_dispatches")
 }
 
 // Enable RLS on all new tables
