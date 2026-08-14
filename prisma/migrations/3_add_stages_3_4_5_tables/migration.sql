@@ -356,7 +356,7 @@ CREATE INDEX "message_write_back_states_tenant_id_mailbox_id_idx" ON "message_wr
 -- ============================================================================
 
 -- CreateTable correction_record
-CREATE TABLE "correction_record" (
+CREATE TABLE "correction_records" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "message_id" TEXT NOT NULL,
@@ -369,7 +369,7 @@ CREATE TABLE "correction_record" (
 );
 
 -- CreateTable sender_reputation_cache
-CREATE TABLE "sender_reputation_cache" (
+CREATE TABLE "sender_reputation_caches" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "sender_domain" TEXT NOT NULL,
@@ -380,18 +380,18 @@ CREATE TABLE "sender_reputation_cache" (
 );
 
 -- CreateIndex correction_record
-CREATE INDEX "correction_record_tenant_id_state_idx" ON "correction_record"("tenant_id", "state");
+CREATE INDEX "correction_record_tenant_id_state_idx" ON "correction_records"("tenant_id", "state");
 
 -- CreateIndex sender_reputation_cache
-CREATE UNIQUE INDEX "sender_reputation_cache_tenant_id_sender_domain_key" ON "sender_reputation_cache"("tenant_id", "sender_domain");
-CREATE INDEX "sender_reputation_cache_tenant_id_idx" ON "sender_reputation_cache"("tenant_id");
+CREATE UNIQUE INDEX "sender_reputation_cache_tenant_id_sender_domain_key" ON "sender_reputation_caches"("tenant_id", "sender_domain");
+CREATE INDEX "sender_reputation_cache_tenant_id_idx" ON "sender_reputation_caches"("tenant_id");
 
 -- ============================================================================
 -- Stage 10: Notification & Alerting
 -- ============================================================================
 
 -- CreateTable notification_subscription
-CREATE TABLE "notification_subscription" (
+CREATE TABLE "notification_subscriptions" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
@@ -404,7 +404,7 @@ CREATE TABLE "notification_subscription" (
 );
 
 -- CreateTable alert_dispatch
-CREATE TABLE "alert_dispatch" (
+CREATE TABLE "alert_dispatches" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
@@ -418,11 +418,11 @@ CREATE TABLE "alert_dispatch" (
 );
 
 -- CreateIndex notification_subscription
-CREATE UNIQUE INDEX "notification_subscription_tenant_id_user_id_key" ON "notification_subscription"("tenant_id", "user_id");
-CREATE INDEX "notification_subscription_tenant_id_idx" ON "notification_subscription"("tenant_id");
+CREATE UNIQUE INDEX "notification_subscription_tenant_id_user_id_key" ON "notification_subscriptions"("tenant_id", "user_id");
+CREATE INDEX "notification_subscription_tenant_id_idx" ON "notification_subscriptions"("tenant_id");
 
 -- CreateIndex alert_dispatch
-CREATE INDEX "alert_dispatch_tenant_id_user_id_category_idx" ON "alert_dispatch"("tenant_id", "user_id", "category");
+CREATE INDEX "alert_dispatch_tenant_id_user_id_category_idx" ON "alert_dispatches"("tenant_id", "user_id", "category");
 
 -- ============================================================================
 -- Enable RLS on Stage 6-10 tenant-scoped tables
@@ -432,10 +432,10 @@ ALTER TABLE "threat_assessments" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_priorities" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "scoring_weights" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_write_back_states" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "correction_record" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "sender_reputation_cache" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "notification_subscription" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "alert_dispatch" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "correction_records" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "sender_reputation_caches" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "notification_subscriptions" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "alert_dispatches" ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
 -- Create RLS policies for Stage 6-10 tenant isolation
@@ -462,21 +462,21 @@ CREATE POLICY "message_write_back_states_tenant_isolation" ON "message_write_bac
 );
 
 -- correction_record tenant isolation
-CREATE POLICY "correction_record_tenant_isolation" ON "correction_record" USING (
+CREATE POLICY "correction_record_tenant_isolation" ON "correction_records" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
 -- sender_reputation_cache tenant isolation
-CREATE POLICY "sender_reputation_cache_tenant_isolation" ON "sender_reputation_cache" USING (
+CREATE POLICY "sender_reputation_cache_tenant_isolation" ON "sender_reputation_caches" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
 -- notification_subscription tenant isolation
-CREATE POLICY "notification_subscription_tenant_isolation" ON "notification_subscription" USING (
+CREATE POLICY "notification_subscription_tenant_isolation" ON "notification_subscriptions" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
 -- alert_dispatch tenant isolation
-CREATE POLICY "alert_dispatch_tenant_isolation" ON "alert_dispatch" USING (
+CREATE POLICY "alert_dispatch_tenant_isolation" ON "alert_dispatches" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
