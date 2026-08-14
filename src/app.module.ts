@@ -8,6 +8,7 @@ import { QueueModule } from './queue/queue.module';
 import { DatabaseModule } from './database/database.module';
 import { TenantContextInterceptor } from './common/interceptors/tenant-context.interceptor';
 import { TenantSubscriptionModule } from './tenant-subscription/tenant-subscription.module';
+import { IdentityAccessModule } from './identity-access/identity-access.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { TenantSubscriptionModule } from './tenant-subscription/tenant-subscript
     ObservabilityModule,
     QueueModule,
     TenantSubscriptionModule,
+    IdentityAccessModule,
   ],
   providers: [
     {
