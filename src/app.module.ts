@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { TenantSubscriptionModule } from './tenant-subscription/tenant-subscription.module';
 import { IdentityAccessModule } from './identity-access/identity-access.module';
@@ -13,12 +14,12 @@ import { MailboxWritebackModule } from './mailbox-writeback/mailbox-writeback.mo
 import { FeedbackLearningModule } from './feedback-learning/feedback-learning.module';
 import { NotificationAlertingModule } from './notification-alerting/notification-alerting.module';
 import { ApiV1Module } from './api/v1/api.module';
-import { PrismaService } from './database/prisma.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot({ maxListeners: 100 }),
+    DatabaseModule,
     HealthModule,
     TenantSubscriptionModule,
     IdentityAccessModule,
@@ -32,6 +33,5 @@ import { PrismaService } from './database/prisma.service';
     NotificationAlertingModule,
     ApiV1Module,
   ],
-  providers: [PrismaService],
 })
 export class AppModule {}

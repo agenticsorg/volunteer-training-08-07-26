@@ -3,11 +3,9 @@ import { MessageWriteBackService } from './application/services/message-writebac
 import { MessageWriteBackStateRepository } from './infrastructure/repositories/message-writeback-state.repository';
 import { GmailWriteBackAdapter } from './infrastructure/adapters/gmail-writeback.adapter';
 import { OutlookWriteBackAdapter } from './infrastructure/adapters/outlook-writeback.adapter';
-import { PrismaService } from '../database/prisma.service';
 
 @Module({
   providers: [
-    PrismaService,
     MessageWriteBackService,
     MessageWriteBackStateRepository,
     GmailWriteBackAdapter,
