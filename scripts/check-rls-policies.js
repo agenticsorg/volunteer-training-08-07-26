@@ -18,8 +18,9 @@ const schemaPath = path.join(__dirname, '../prisma/schema.prisma');
 const schema = fs.readFileSync(schemaPath, 'utf-8');
 
 // Extract every model block, honoring @@map for the real table name
+// Use a pattern that handles nested braces by matching to closing brace on its own line
 const tenantScopedTables = new Set();
-const modelBlockPattern = /model\s+(\w+)\s*\{([^}]*)\}/gs;
+const modelBlockPattern = /model\s+(\w+)\s*\{([\s\S]*?)\n\}/g;
 let modelMatch;
 while ((modelMatch = modelBlockPattern.exec(schema)) !== null) {
   const [, modelName, body] = modelMatch;
