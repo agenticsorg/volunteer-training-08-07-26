@@ -10,11 +10,13 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const core_1 = require("@nestjs/core");
+const event_emitter_1 = require("@nestjs/event-emitter");
 const health_module_1 = require("./health/health.module");
 const observability_module_1 = require("./observability/observability.module");
 const queue_module_1 = require("./queue/queue.module");
 const database_module_1 = require("./database/database.module");
 const tenant_context_interceptor_1 = require("./common/interceptors/tenant-context.interceptor");
+const tenant_subscription_module_1 = require("./tenant-subscription/tenant-subscription.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -25,10 +27,12 @@ exports.AppModule = AppModule = __decorate([
                 isGlobal: true,
                 envFilePath: '.env',
             }),
+            event_emitter_1.EventEmitterModule.forRoot(),
             database_module_1.DatabaseModule,
             health_module_1.HealthModule,
             observability_module_1.ObservabilityModule,
             queue_module_1.QueueModule,
+            tenant_subscription_module_1.TenantSubscriptionModule,
         ],
         providers: [
             {

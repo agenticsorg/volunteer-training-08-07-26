@@ -15,7 +15,12 @@
     "sourceMap": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "paths": {
+      "@common/*": ["src/common/*"],
+      "@database/*": ["src/database/*"]
+    }
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist", "**/*.spec.ts"]

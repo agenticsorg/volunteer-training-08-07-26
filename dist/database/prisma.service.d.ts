@@ -1,9 +1,9 @@
 import { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
-export declare class PrismaService implements OnModuleInit, OnModuleDestroy {
-    private prisma;
+import { PrismaClient } from '@prisma/client';
+export declare class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+    constructor();
     onModuleInit(): Promise<void>;
     onModuleDestroy(): Promise<void>;
     setTenantContext(tenantId: string): Promise<void>;
-    getClient(): any;
 }
 //# sourceMappingURL=prisma.service.d.ts.map
