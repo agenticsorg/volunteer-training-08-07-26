@@ -373,3 +373,163 @@ model ShadowEvalRun {
   @@index([tenant_id])
   @@index([approved_at])
 }
+
+// ============================================================================
+// Stage 5: Contact Graph
+// ============================================================================
+
+model SenderProfile {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid
+  mailbox_id    String
+  sender_address String
+  classification Json    // ContactClassification JSON
+  interaction_count Int  @default(0)
+  bidirectional_interactions Int @default(0)
+  is_vip        Boolean  @default(false)
+  vip_auto_promoted Boolean @default(false)
+  last_interaction DateTime @default(now())
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([tenant_id, mailbox_id, sender_address])
+  @@index([tenant_id, mailbox_id])
+}
+
+// ============================================================================
+// Stage 6: Threat Detection
+// ============================================================================
+
+model ThreatAssessment {
+  id                String   @id @default(uuid())
+  tenant_id         String   @db.Uuid
+  message_id        String   @db.Uuid
+  auth_signal       Json?    // AuthenticationSignal JSON
+  lookalike_score   Json?    // LookalikeScore JSON
+  intent_classification Json? // IntentClassification JSON
+  quarantine_decision String  @default("none") // none | soft_flag | locked_quarantine
+  quarantine_locked Boolean  @default(false)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([tenant_id, message_id])
+  @@index([tenant_id, quarantine_locked])
+}
+
+model BrandWatchlist {
+  id            String   @id @default(uuid())
+  domain        String   @unique
+  brand_name    String
+  impersonation_risk_level String @default("medium") // low | medium | high
+  last_updated  DateTime @default(now())
+  
+  @@index([domain])
+}
+
+// ============================================================================
+// Stage 7: Prioritization
+// ============================================================================
+
+model MessagePriority {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid
+  message_id    String   @db.Uuid
+  priority_score Float   @default(0)
+  components    Json     // ScoreComponent[]
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([tenant_id, message_id])
+  @@index([tenant_id, priority_score])
+}
+
+model ScoringWeights {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid @unique
+  vip_weight    Float    @default(0.25)
+  frequency_weight Float @default(0.20)
+  urgency_weight Float   @default(0.30)
+  calendar_weight Float  @default(0.10)
+  needs_reply_aging_weight Float @default(0.15)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([tenant_id])
+}
+
+// ============================================================================
+// Stage 8: Mailbox Write-back
+// ============================================================================
+
+model MessageWriteBackState {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid
+  mailbox_id    String
+  message_id    String   @db.Uuid
+  facets        Json     // Map<facet_type, FacetApplication>
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([tenant_id, mailbox_id, message_id])
+  @@index([tenant_id, mailbox_id])
+}
+
+// ============================================================================
+// Stage 9: Feedback & Learning
+// ============================================================================
+
+model CorrectionRecord {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid
+  message_id    String   @db.Uuid
+  verdict       Json     // VerdictSnapshot
+  source        String   @default("explicit_user_action") // passive_inferred | explicit_user_action | admin_override
+  state         String   @default("confirmed") // candidate | confirmed | processed
+  created_at    DateTime @default(now())
+
+  @@index([tenant_id, state])
+}
+
+model SenderReputationCache {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid
+  sender_domain String
+  category_confidence Json @default("{}")
+  last_updated  DateTime @default(now())
+
+  @@unique([tenant_id, sender_domain])
+  @@index([tenant_id])
+}
+
+// ============================================================================
+// Stage 10: Notification & Alerting
+// ============================================================================
+
+model NotificationSubscription {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid
+  user_id       String   @db.Uuid
+  preferences   Json     // Map<event_type, preference>
+  authorized_channels String[]
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@unique([tenant_id, user_id])
+  @@index([tenant_id])
+}
+
+model AlertDispatch {
+  id            String   @id @default(uuid())
+  tenant_id     String   @db.Uuid
+  user_id       String   @db.Uuid
+  alert_id      String   @unique
+  category      String
+  dispatched_at DateTime @default(now())
+  cool_down_until DateTime
+  created_at    DateTime @default(now())
+
+  @@index([tenant_id, user_id, category])
+}
+
+// Enable RLS on all new tables
+// (In migration file, add policies)
