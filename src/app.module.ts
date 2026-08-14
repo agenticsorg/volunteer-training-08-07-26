@@ -13,6 +13,7 @@ import { MailboxWritebackModule } from './mailbox-writeback/mailbox-writeback.mo
 import { FeedbackLearningModule } from './feedback-learning/feedback-learning.module';
 import { NotificationAlertingModule } from './notification-alerting/notification-alerting.module';
 import { ApiV1Module } from './api/v1/api.module';
+import { PrismaService } from './database/prisma.service';
 
 @Module({
   imports: [
@@ -31,5 +32,6 @@ import { ApiV1Module } from './api/v1/api.module';
     NotificationAlertingModule,
     ApiV1Module,
   ],
+  providers: [PrismaService],
 })
 export class AppModule {}
