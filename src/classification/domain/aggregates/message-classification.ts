@@ -44,12 +44,18 @@ export class MessageClassification {
     }
     // Only assign NeedsReply if weak automation signals
     if (!signals.listUnsubscribePresent && !signals.precedenceBulk && !signals.autoSubmittedPresent) {
-      this.assignLabel({
+      const label: LabelAssignment = {
         category: Category.NEEDS_REPLY,
         confidence,
         sourceTier: 'rule',
         classifierVersion: this.pipelineVersion,
-      });
+      };
+      const existing = this.labels.findIndex(l => l.category === label.category);
+      if (existing >= 0) {
+        this.labels[existing] = label;
+      } else {
+        this.labels.push(label);
+      }
     }
   }
 

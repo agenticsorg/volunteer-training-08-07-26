@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { IntentClassification, PhishingIntent } from '../../domain/value-objects';
 
 export interface ClassifierPort {
@@ -13,7 +13,7 @@ export interface ClassifierPort {
 
 @Injectable()
 export class ThreatIntentClassifierAdapter {
-  constructor(private classifier: ClassifierPort) {}
+  constructor(@Inject('CLASSIFIER_PORT') private classifier: ClassifierPort) {}
 
   async classifyPhishingIntent(
     messageBody: string,
