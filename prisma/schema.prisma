@@ -493,6 +493,7 @@ model MessageWriteBackState {
 
   @@unique([tenant_id, mailbox_id, message_id])
   @@index([tenant_id, mailbox_id])
+  @@map("message_write_back_states")
 }
 
 // ============================================================================

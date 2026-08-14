@@ -334,8 +334,8 @@ CREATE INDEX "scoring_weights_tenant_id_idx" ON "scoring_weights"("tenant_id");
 -- Stage 8: Mailbox Write-back
 -- ============================================================================
 
--- CreateTable message_write_back_state
-CREATE TABLE "message_write_back_state" (
+-- CreateTable message_write_back_states
+CREATE TABLE "message_write_back_states" (
     "id" TEXT NOT NULL,
     "tenant_id" TEXT NOT NULL,
     "mailbox_id" TEXT NOT NULL,
@@ -344,12 +344,12 @@ CREATE TABLE "message_write_back_state" (
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "message_write_back_state_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "message_write_back_states_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex message_write_back_state
-CREATE UNIQUE INDEX "message_write_back_state_tenant_id_mailbox_id_message_id_key" ON "message_write_back_state"("tenant_id", "mailbox_id", "message_id");
-CREATE INDEX "message_write_back_state_tenant_id_mailbox_id_idx" ON "message_write_back_state"("tenant_id", "mailbox_id");
+-- CreateIndex message_write_back_states
+CREATE UNIQUE INDEX "message_write_back_states_tenant_id_mailbox_id_message_id_key" ON "message_write_back_states"("tenant_id", "mailbox_id", "message_id");
+CREATE INDEX "message_write_back_states_tenant_id_mailbox_id_idx" ON "message_write_back_states"("tenant_id", "mailbox_id");
 
 -- ============================================================================
 -- Stage 9: Feedback & Learning
@@ -431,7 +431,7 @@ CREATE INDEX "alert_dispatch_tenant_id_user_id_category_idx" ON "alert_dispatch"
 ALTER TABLE "threat_assessments" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "message_priorities" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "scoring_weights" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "message_write_back_state" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "message_write_back_states" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "correction_record" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "sender_reputation_cache" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "notification_subscription" ENABLE ROW LEVEL SECURITY;
@@ -456,8 +456,8 @@ CREATE POLICY "scoring_weights_tenant_isolation" ON "scoring_weights" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
--- message_write_back_state tenant isolation
-CREATE POLICY "message_write_back_state_tenant_isolation" ON "message_write_back_state" USING (
+-- message_write_back_states tenant isolation
+CREATE POLICY "message_write_back_states_tenant_isolation" ON "message_write_back_states" USING (
   "tenant_id" = current_setting('row_security_context.tenant_id')::TEXT
 );
 
