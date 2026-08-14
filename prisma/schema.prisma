@@ -21,7 +21,6 @@ model Tenant {
   messageBodyRefs MessageBodyRef[]
   syncEventLogs SyncEventLog[]
   outboxEvents OutboxEvent[]
-  senderProfiles SenderProfile[]
 
   @@map("tenants")
 }
@@ -336,6 +335,7 @@ model MessageLabel {
   @@unique([message_id, category])
   @@index([tenant_id])
   @@index([message_id])
+  @@map("message_labels")
 }
 
 model PipelineVersion {
@@ -382,6 +382,7 @@ model ShadowEvalRun {
 
   @@index([tenant_id])
   @@index([approved_at])
+  @@map("shadow_eval_runs")
 }
 
 // ============================================================================
@@ -389,25 +390,21 @@ model ShadowEvalRun {
 // ============================================================================
 
 model SenderProfile {
-  id            String   @id @default(cuid())
+  id            String   @id @default(uuid())
   tenant_id     String   @db.Uuid
   mailbox_id    String
   sender_address String
   classification Json    // ContactClassification JSON
-  confidence    Float    @default(0.0)
   interaction_count Int  @default(0)
-  bidirectional_count Int @default(0)
+  bidirectional_interactions Int @default(0)
   is_vip        Boolean  @default(false)
   vip_auto_promoted Boolean @default(false)
   last_interaction DateTime @default(now())
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  tenant Tenant @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-
   @@unique([tenant_id, mailbox_id, sender_address])
   @@index([tenant_id, mailbox_id])
-  @@index([is_vip])
   @@map("sender_profiles")
 }
 
@@ -429,6 +426,7 @@ model ThreatAssessment {
 
   @@unique([tenant_id, message_id])
   @@index([tenant_id, quarantine_locked])
+  @@map("threat_assessments")
 }
 
 model BrandWatchlist {
@@ -437,8 +435,9 @@ model BrandWatchlist {
   brand_name    String
   impersonation_risk_level String @default("medium") // low | medium | high
   last_updated  DateTime @default(now())
-  
+
   @@index([domain])
+  @@map("brand_watchlist")
 }
 
 // ============================================================================
