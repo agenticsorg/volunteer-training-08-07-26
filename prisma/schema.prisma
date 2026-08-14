@@ -186,3 +186,114 @@ model SubscriptionBillingEvent {
   @@index([processed])
   @@map("subscription_billing_events")
 }
+
+// Mailbox Ingestion bounded context
+
+model MailboxConnection {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  mailboxId             String   @map("mailbox_id") // platform-assigned (Gmail address or Outlook OID)
+  platform              String   // "gmail" | "outlook"
+  status                String   @default("active") // active|sync_failed|revoked
+  
+  // Watch/Subscription state
+  watchSubscriptionId   String?  @map("watch_subscription_id")
+  watchExpiresAt        DateTime? @map("watch_expires_at")
+  syncCursorValue       String?  @map("sync_cursor_value") // Gmail historyId or Outlook deltaLink
+  
+  credentialHandleId    String   @map("credential_handle_id") // FK to MailboxAuthorization.credentialHandle
+  lastWebhookAt         DateTime? @map("last_webhook_at")
+  lastSyncAt            DateTime? @map("last_sync_at")
+  syncFailureCount      Int      @default(0) @map("sync_failure_count")
+  
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+  
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ingestedMessages      IngestedMessage[]
+  syncEventLogs         SyncEventLog[]
+
+  @@unique([tenantId, mailboxId, platform])
+  @@index([tenantId])
+  @@index([status])
+  @@map("mailbox_connections")
+}
+
+model IngestedMessage {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  messageId             String   @map("message_id") // internal UUID
+  mailboxId             String   @map("mailbox_id") // FK to MailboxConnection
+  platformMessageId     String   @map("platform_message_id") // Gmail msg ID or Outlook msg ID
+  platform              String   // "gmail" | "outlook"
+  
+  normalizedEnvelope    Json     @map("normalized_envelope") // MessageEnvelope value object
+  bodyRefId             String?  @map("body_ref_id") // FK to MessageBodyRef
+  
+  createdAt             DateTime @default(now()) @map("created_at")
+  
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bodyRef               MessageBodyRef? @relation(fields: [bodyRefId], references: [id])
+
+  @@unique([tenantId, messageId])
+  @@unique([tenantId, platformMessageId, platform, mailboxId])
+  @@index([tenantId])
+  @@index([mailboxId])
+  @@map("ingested_messages")
+}
+
+model MessageBodyRef {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  messageId             String   @map("message_id") // FK to IngestedMessage
+  bodyHash              String   @map("body_hash") // SHA256 of body
+  bodyStorageRef        String   @map("body_storage_ref") // S3 URI or file path
+  ttlExpiresAt          DateTime @map("ttl_expires_at") // When body should be deleted
+  
+  createdAt             DateTime @default(now()) @map("created_at")
+  
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  ingestedMessages      IngestedMessage[]
+
+  @@index([tenantId])
+  @@index([ttlExpiresAt])
+  @@map("message_body_refs")
+}
+
+model SyncEventLog {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  mailboxConnectionId   String   @map("mailbox_connection_id")
+  eventType             String   // webhook_received|delta_sync_completed|renewal_failed|rate_limited
+  details               Json     @default("{}")
+  
+  createdAt             DateTime @default(now()) @map("created_at")
+  
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  mailboxConnection     MailboxConnection @relation(fields: [mailboxConnectionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([mailboxConnectionId])
+  @@index([eventType])
+  @@map("sync_event_logs")
+}
+
+// Outbox for transactional event publishing
+model OutboxEvent {
+  id                    String   @id @default(cuid())
+  tenantId              String   @map("tenant_id")
+  aggregateId           String   @map("aggregate_id")
+  aggregateType         String   @map("aggregate_type") // IngestedMessage
+  eventType             String   @map("event_type") // MessageIngested
+  payload               Json
+  published             Boolean  @default(false)
+  
+  createdAt             DateTime @default(now()) @map("created_at")
+  publishedAt           DateTime? @map("published_at")
+  
+  tenant                Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([published])
+  @@map("outbox_events")
+}
