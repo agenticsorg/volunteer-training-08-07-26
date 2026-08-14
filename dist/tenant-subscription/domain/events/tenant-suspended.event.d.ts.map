@@ -1,1 +1,0 @@
-{"version":3,"file":"tenant-suspended.event.d.ts","sourceRoot":"","sources":["../../../../src/tenant-subscription/domain/events/tenant-suspended.event.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,WAAW,EAAE,MAAM,6BAA6B,CAAC;AAE1D,qBAAa,eAAgB,SAAQ,WAAW;aAE5B,QAAQ,EAAE,MAAM;aAChB,MAAM,EAAE,MAAM;gBADd,QAAQ,EAAE,MAAM,EAChB,MAAM,EAAE,MAAM;CAIjC"}

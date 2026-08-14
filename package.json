@@ -1,7 +1,7 @@
 {
-  "name": "wt-stage-00",
-  "version": "1.0.0",
-  "description": "",
+  "name": "email-triage-saas",
+  "version": "0.1.0",
+  "description": "Cross-platform (Gmail + Outlook) email triage/classification SaaS",
   "main": "index.js",
   "directories": {
     "doc": "docs"

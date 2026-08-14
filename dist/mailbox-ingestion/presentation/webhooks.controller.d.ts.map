@@ -1,1 +1,0 @@
-{"version":3,"file":"webhooks.controller.d.ts","sourceRoot":"","sources":["../../../src/mailbox-ingestion/presentation/webhooks.controller.ts"],"names":[],"mappings":"AACA,OAAO,EAAE,aAAa,EAAE,MAAM,wCAAwC,CAAC;AAEvE,qBACa,kBAAkB;IACjB,OAAO,CAAC,aAAa;gBAAb,aAAa,EAAE,aAAa;IAG1C,kBAAkB,CAAS,OAAO,EAAE,GAAG;;;IASvC,oBAAoB,CAAS,OAAO,EAAE,GAAG;;;CAOhD"}

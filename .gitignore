@@ -16,3 +16,10 @@ CLAUDE.md
 .agents/
 .swarm/
 ruvector.db
+
+# Node project build artifacts (must never be committed)
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.env

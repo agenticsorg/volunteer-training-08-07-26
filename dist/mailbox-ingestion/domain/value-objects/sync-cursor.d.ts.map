@@ -1,1 +1,0 @@
-{"version":3,"file":"sync-cursor.d.ts","sourceRoot":"","sources":["../../../../src/mailbox-ingestion/domain/value-objects/sync-cursor.ts"],"names":[],"mappings":"AAAA,qBAAa,UAAU;IAEnB,QAAQ,CAAC,QAAQ,EAAE,OAAO,GAAG,SAAS;IACtC,QAAQ,CAAC,KAAK,EAAE,MAAM;gBADb,QAAQ,EAAE,OAAO,GAAG,SAAS,EAC7B,KAAK,EAAE,MAAM;IAGxB,YAAY,CAAC,QAAQ,EAAE,MAAM,GAAG,OAAO;CAWxC"}
