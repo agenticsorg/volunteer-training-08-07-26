@@ -76,13 +76,13 @@ export class MessagesController {
     @Param('messageId') messageId: string,
   ): Promise<MessageResponseDto> {
     const message = await this.prisma.ingestedMessage.findUnique({
-      where: { id: messageId },
+      where: { tenantId_messageId: { tenantId, messageId } },
       include: {
         messageLabels: true,
       },
     });
 
-    if (!message || message.tenantId !== tenantId) {
+    if (!message) {
       throw new NotFoundException('Message not found');
     }
 
@@ -107,10 +107,10 @@ export class MessagesController {
   ): Promise<{ correction_id: string }> {
     // Verify message exists and belongs to tenant
     const message = await this.prisma.ingestedMessage.findUnique({
-      where: { id: messageId },
+      where: { tenantId_messageId: { tenantId, messageId } },
     });
 
-    if (!message || message.tenantId !== tenantId) {
+    if (!message) {
       throw new NotFoundException('Message not found');
     }
 

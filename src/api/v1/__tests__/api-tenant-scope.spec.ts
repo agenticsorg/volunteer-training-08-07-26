@@ -53,44 +53,42 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
       },
     });
 
-    // Create messages for each tenant (use proper UUID format)
+    // Create messages for each tenant (use proper UUID format for messageId)
     const crypto = require('crypto');
     const testMessageUuid1 = crypto.randomUUID();
     const testMessageUuid2 = crypto.randomUUID();
 
-    message1Id = (
-      await prisma.ingestedMessage.create({
-        data: {
-          tenantId: tenant1Id,
-          messageId: testMessageUuid1,
-          mailboxId: 'tenant-a@example.com',
-          platformMessageId: 'gmail-a-1',
-          platform: 'gmail',
-          mailboxConnectionId: mailbox1.id,
-          normalizedEnvelope: {
-            from: 'internal@example.com',
-            subject: 'Confidential: Tenant A',
-          },
+    await prisma.ingestedMessage.create({
+      data: {
+        tenantId: tenant1Id,
+        messageId: testMessageUuid1,
+        mailboxId: 'tenant-a@example.com',
+        platformMessageId: 'gmail-a-1',
+        platform: 'gmail',
+        mailboxConnectionId: mailbox1.id,
+        normalizedEnvelope: {
+          from: 'internal@example.com',
+          subject: 'Confidential: Tenant A',
         },
-      })
-    ).id;
+      },
+    });
+    message1Id = testMessageUuid1;
 
-    message2Id = (
-      await prisma.ingestedMessage.create({
-        data: {
-          tenantId: tenant2Id,
-          messageId: testMessageUuid2,
-          mailboxId: 'tenant-b@example.com',
-          platformMessageId: 'gmail-b-1',
-          platform: 'gmail',
-          mailboxConnectionId: mailbox2.id,
-          normalizedEnvelope: {
-            from: 'external@example.com',
-            subject: 'Sensitive: Tenant B Data',
-          },
+    await prisma.ingestedMessage.create({
+      data: {
+        tenantId: tenant2Id,
+        messageId: testMessageUuid2,
+        mailboxId: 'tenant-b@example.com',
+        platformMessageId: 'gmail-b-1',
+        platform: 'gmail',
+        mailboxConnectionId: mailbox2.id,
+        normalizedEnvelope: {
+          from: 'external@example.com',
+          subject: 'Sensitive: Tenant B Data',
         },
-      })
-    ).id;
+      },
+    });
+    message2Id = testMessageUuid2;
   });
 
   afterAll(async () => {
