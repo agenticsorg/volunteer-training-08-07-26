@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
 /**
@@ -10,47 +10,64 @@ import { PrismaService } from '../../database/prisma.service';
  *
  * Classification-affecting changes (rule/prompt/model changes) are tied to
  * pipeline_version; rollback is a version pointer change, not a code revert.
+ *
+ * State is persisted in CanaryRolloutState table and restored on restart.
  */
 @Injectable()
-export class CanaryRolloutService {
+export class CanaryRolloutService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(CanaryRolloutService.name);
 
-  // Current production version
   private currentProductionVersion: string = 'v1.0.0';
-
-  // Canary version (if any)
   private canaryVersion: string | null = null;
-
-  // Canary rollout percentage (0-100)
   private canaryPercentage: number = 0;
-
-  // Beta tenant IDs that always get canary version
   private betaTenantIds = new Set<string>();
 
-  constructor(private prisma: PrismaService) {
-    this.initializeVersionTracking();
-  }
+  constructor(private prisma: PrismaService) {}
 
-  /**
-   * Initialize version tracking from database or configuration
-   */
-  private async initializeVersionTracking(): Promise<void> {
-    try {
-      // In production, load current and canary versions from a config table
-      // or environment variables
-      const versionConfig = process.env.PIPELINE_VERSION || 'v1.0.0';
-      const canaryConfig = process.env.CANARY_PIPELINE_VERSION || null;
-      const canaryPctConfig = process.env.CANARY_PERCENTAGE || '0';
+  async onModuleInit(): Promise<void> {
+    // Load persisted state from database
+    const rolloutState = await this.prisma.canaryRolloutState.findFirst();
 
-      this.currentProductionVersion = versionConfig;
-      this.canaryVersion = canaryConfig;
-      this.canaryPercentage = parseInt(canaryPctConfig, 10);
+    if (rolloutState) {
+      this.currentProductionVersion = rolloutState.productionVersion;
+      this.canaryVersion = rolloutState.canaryVersion;
+      this.canaryPercentage = rolloutState.canaryPercentage;
+      this.betaTenantIds = new Set(rolloutState.betaTenantIds || []);
 
       this.logger.log(
-        `Version tracking initialized: prod=${this.currentProductionVersion}, canary=${this.canaryVersion} (${this.canaryPercentage}%)`,
+        `Restored canary rollout state: prod=${this.currentProductionVersion}, canary=${this.canaryVersion} (${this.canaryPercentage}%)`,
       );
+    } else {
+      // Initialize fresh state in database
+      await this.prisma.canaryRolloutState.create({
+        data: {
+          productionVersion: 'v1.0.0',
+          canaryVersion: null,
+          canaryPercentage: 0,
+          betaTenantIds: [],
+        },
+      });
+    }
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    // Save state before shutdown
+    await this.saveState();
+  }
+
+  private async saveState(): Promise<void> {
+    try {
+      await this.prisma.canaryRolloutState.updateMany({
+        data: {
+          productionVersion: this.currentProductionVersion,
+          canaryVersion: this.canaryVersion,
+          canaryPercentage: this.canaryPercentage,
+          betaTenantIds: Array.from(this.betaTenantIds),
+          updatedAt: new Date(),
+        },
+      });
     } catch (error) {
-      this.logger.error('Failed to initialize version tracking', error);
+      this.logger.error('Failed to persist canary rollout state', error);
     }
   }
 
@@ -94,7 +111,7 @@ export class CanaryRolloutService {
    * Promote canary version to production
    * Promotes all tenants to the canary version and clears canary state
    */
-  promoteCanaryToProduction(): void {
+  async promoteCanaryToProduction(): Promise<void> {
     if (!this.canaryVersion) {
       this.logger.warn('No canary version to promote');
       return;
@@ -108,15 +125,14 @@ export class CanaryRolloutService {
     this.canaryVersion = null;
     this.canaryPercentage = 0;
 
-    // In production: update database config or publish event
-    // await this.configService.updatePipelineVersion(this.currentProductionVersion);
+    await this.saveState();
   }
 
   /**
    * Rollback to previous production version
    * Tied to pipeline_version pointer change, not code revert
    */
-  rollbackProduction(previousVersion: string): void {
+  async rollbackProduction(previousVersion: string): Promise<void> {
     this.logger.warn(
       `Rolling back production from ${this.currentProductionVersion} to ${previousVersion}`,
     );
@@ -125,14 +141,16 @@ export class CanaryRolloutService {
     this.canaryVersion = null;
     this.canaryPercentage = 0;
 
-    // In production: update database config or publish event
-    // await this.configService.updatePipelineVersion(this.currentProductionVersion);
+    await this.saveState();
   }
 
   /**
    * Start new canary rollout with given version and percentage
    */
-  startCanaryRollout(canaryVersion: string, startPercentage: number = 5): void {
+  async startCanaryRollout(
+    canaryVersion: string,
+    startPercentage: number = 5,
+  ): Promise<void> {
     if (canaryVersion === this.currentProductionVersion) {
       this.logger.error('Canary version cannot be same as production');
       return;
@@ -145,15 +163,14 @@ export class CanaryRolloutService {
     this.canaryVersion = canaryVersion;
     this.canaryPercentage = startPercentage;
 
-    // In production: persist config
-    // await this.configService.setCanaryRollout(canaryVersion, startPercentage);
+    await this.saveState();
   }
 
   /**
    * Increase canary rollout percentage
    * Called after successful SLI monitoring of previous percentage
    */
-  increaseCanaryPercentage(newPercentage: number): void {
+  async increaseCanaryPercentage(newPercentage: number): Promise<void> {
     if (!this.canaryVersion) {
       this.logger.warn('No active canary rollout');
       return;
@@ -170,31 +187,26 @@ export class CanaryRolloutService {
 
     this.canaryPercentage = newPercentage;
 
-    // In production: persist config
-    // await this.configService.setCanaryPercentage(newPercentage);
+    await this.saveState();
   }
 
   /**
    * Register tenant as beta opt-in
    * Beta tenants always get canary version first
    */
-  registerBetaTenant(tenantId: string): void {
+  async registerBetaTenant(tenantId: string): Promise<void> {
     this.betaTenantIds.add(tenantId);
     this.logger.log(`Registered tenant ${tenantId} as beta opt-in`);
-
-    // In production: persist to database
-    // await this.configService.addBetaTenant(tenantId);
+    await this.saveState();
   }
 
   /**
    * Unregister tenant from beta program
    */
-  unregisterBetaTenant(tenantId: string): void {
+  async unregisterBetaTenant(tenantId: string): Promise<void> {
     this.betaTenantIds.delete(tenantId);
     this.logger.log(`Unregistered tenant ${tenantId} from beta opt-in`);
-
-    // In production: persist to database
-    // await this.configService.removeBetaTenant(tenantId);
+    await this.saveState();
   }
 
   /**

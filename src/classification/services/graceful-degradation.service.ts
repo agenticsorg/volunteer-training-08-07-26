@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 
 /**
@@ -12,21 +12,75 @@ import { PrismaService } from '../../database/prisma.service';
  * - Messages that receive strong Tier-1 rule signals continue to be classified
  * - Messages requiring LLM classification are marked as degraded/pending
  * - No messages are silently misclassified
+ *
+ * State is persisted in LlmProviderDegradation table and restored on restart.
  */
 @Injectable()
-export class GracefulDegradationService {
+export class GracefulDegradationService
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(GracefulDegradationService.name);
 
   // Track LLM provider health
   private llmProviderHealthy = true;
   private lastLlmFailure: Date | null = null;
   private consecutiveFailures = 0;
-  private readonly FAILURE_THRESHOLD = 5; // Trigger degradation after 5 consecutive failures
-  private readonly DEGRADATION_COOLDOWN_MS = 60 * 1000; // 1 minute cooldown before retry
+  private readonly FAILURE_THRESHOLD = 5;
+  private readonly DEGRADATION_COOLDOWN_MS = 60 * 1000;
+  private healthCheckInterval: NodeJS.Timeout | null = null;
 
-  constructor(private prisma: PrismaService) {
-    // Periodically check LLM provider health
+  constructor(private prisma: PrismaService) {}
+
+  async onModuleInit(): Promise<void> {
+    // Load persisted state from database
+    const degradationState =
+      await this.prisma.llmProviderDegradation.findFirst();
+
+    if (degradationState) {
+      this.llmProviderHealthy = degradationState.isHealthy;
+      this.consecutiveFailures = degradationState.consecutiveFailures;
+      this.lastLlmFailure = degradationState.lastFailureAt;
+      this.logger.log(
+        `Restored degradation state: healthy=${this.llmProviderHealthy}, failures=${this.consecutiveFailures}`,
+      );
+    } else {
+      // Initialize fresh state in database
+      await this.prisma.llmProviderDegradation.create({
+        data: {
+          isHealthy: true,
+          consecutiveFailures: 0,
+        },
+      });
+    }
+
+    // Start periodic health check
     this.startHealthCheck();
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    // Save state before shutdown
+    await this.saveState();
+
+    // Clean up interval
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+  }
+
+  private async saveState(): Promise<void> {
+    try {
+      await this.prisma.llmProviderDegradation.updateMany({
+        data: {
+          isHealthy: this.llmProviderHealthy,
+          consecutiveFailures: this.consecutiveFailures,
+          lastFailureAt: this.lastLlmFailure,
+          updatedAt: new Date(),
+        },
+      });
+    } catch (error) {
+      this.logger.error('Failed to persist degradation state', error);
+    }
   }
 
   /**
@@ -114,7 +168,7 @@ export class GracefulDegradationService {
    */
   private startHealthCheck(): void {
     // Run health check every 30 seconds (configurable)
-    setInterval(() => {
+    this.healthCheckInterval = setInterval(() => {
       if (this.isDegradedMode()) {
         this.performHealthCheck();
       }
