@@ -23,3 +23,8 @@ dist/
 coverage/
 *.tsbuildinfo
 .env
+
+# Database backups and restore drills (local testing only)
+backups/
+test-backups/
+restore-drill-backup/
