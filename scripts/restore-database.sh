@@ -103,8 +103,8 @@ if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
                 psql --username="$DB_USER" -c "CREATE DATABASE $TARGET_DB;" 2>> "$RESTORE_LOG"; then
                 echo "✓ Created target database" | tee -a "$RESTORE_LOG"
 
-                # Restore from backup
-                if docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
+                # Restore from backup (docker exec needs -i to forward piped stdin)
+                if docker exec -i -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
                     psql --username="$DB_USER" "$TARGET_DB" < "$RESTORE_FILE" >> "$RESTORE_LOG" 2>&1; then
                     RESTORE_SUCCEEDED=true
                 fi
@@ -163,14 +163,17 @@ if [ "$RESTORE_SUCCEEDED" = true ]; then
 
     # Check table count and query sample data
     if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
-        CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format='{{.ID}}' 2>/dev/null | head -1)
+        CONTAINER_ID="${DOCKER_CONTAINER_ID:-}"
+        if [ -z "$CONTAINER_ID" ]; then
+            CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15" --format='{{.ID}}' 2>/dev/null | head -1)
+        fi
         if [ -n "$CONTAINER_ID" ]; then
             TABLE_COUNT=$(docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
                 psql -t --username="$DB_USER" "$TARGET_DB" \
                 -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>> "$RESTORE_LOG" | tr -d ' ')
             TENANT_COUNT=$(docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
                 psql -t --username="$DB_USER" "$TARGET_DB" \
-                -c "SELECT COUNT(*) FROM tenant;" 2>/dev/null | tr -d ' ' || echo "0")
+                -c "SELECT COUNT(*) FROM tenants;" 2>/dev/null | tr -d ' ' || echo "0")
         else
             TABLE_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
                 -t --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
@@ -179,7 +182,7 @@ if [ "$RESTORE_SUCCEEDED" = true ]; then
             TENANT_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
                 -t --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
                 "$TARGET_DB" \
-                -c "SELECT COUNT(*) FROM tenant;" 2>/dev/null | tr -d ' ' || echo "0")
+                -c "SELECT COUNT(*) FROM tenants;" 2>/dev/null | tr -d ' ' || echo "0")
         fi
     else
         TABLE_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
@@ -189,7 +192,7 @@ if [ "$RESTORE_SUCCEEDED" = true ]; then
         TENANT_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
             -t --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
             "$TARGET_DB" \
-            -c "SELECT COUNT(*) FROM tenant;" 2>/dev/null | tr -d ' ' || echo "0")
+            -c "SELECT COUNT(*) FROM tenants;" 2>/dev/null | tr -d ' ' || echo "0")
     fi
 
     if [ "$TABLE_COUNT" -gt 0 ]; then
