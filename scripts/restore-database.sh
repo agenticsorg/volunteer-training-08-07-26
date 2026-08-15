@@ -80,7 +80,16 @@ RESTORE_SUCCEEDED=false
 
 if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
     if command -v docker &> /dev/null; then
-        CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format='{{.ID}}' 2>/dev/null | head -1)
+        # Allow explicit container ID via env var, otherwise auto-detect
+        CONTAINER_ID="${DOCKER_CONTAINER_ID:-}"
+
+        if [ -z "$CONTAINER_ID" ]; then
+            # Auto-detect: match postgres:15, fallback to any postgres version
+            CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15" --format='{{.ID}}' 2>/dev/null | head -1)
+            if [ -z "$CONTAINER_ID" ]; then
+                CONTAINER_ID=$(docker ps --filter "status=running" --format='{{.ID}} {{.Image}}' 2>/dev/null | grep postgres | head -1 | awk '{print $1}')
+            fi
+        fi
 
         if [ -n "$CONTAINER_ID" ]; then
             echo "Using Docker container $CONTAINER_ID for restore..." >> "$RESTORE_LOG"
