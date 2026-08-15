@@ -557,5 +557,31 @@ model AlertDispatch {
   @@map("alert_dispatches")
 }
 
+model CanaryRolloutState {
+  id                     String   @id @default(uuid())
+  productionVersion      String
+  canaryVersion          String?
+  canaryPercentage       Int      @default(0)
+  betaTenantIds          String[] // JSON array of tenant IDs
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("canary_rollout_state")
+}
+
+model LlmProviderDegradation {
+  id                     String   @id @default(uuid())
+  isHealthy              Boolean  @default(true)
+  consecutiveFailures    Int      @default(0)
+  lastFailureAt          DateTime?
+  failureThreshold       Int      @default(5)
+  cooldownMs             Int      @default(60000)
+  lastRetryAt            DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("llm_provider_degradation")
+}
+
 // Enable RLS on all new tables
 // (In migration file, add policies)

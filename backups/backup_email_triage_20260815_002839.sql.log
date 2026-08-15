@@ -1,3 +1,0 @@
-Timestamp: 20260815_002839
-Host: localhost:5432
-scripts/backup-database.sh: line 39: pg_dump: command not found

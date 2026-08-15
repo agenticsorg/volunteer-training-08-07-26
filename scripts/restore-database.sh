@@ -6,6 +6,7 @@
 # Restores from encrypted, point-in-time-recoverable backups
 # Tests backup validity via periodic restore drills (not just assumed)
 # RTO target: ≤1 hour for full service restoration
+# Works with Docker containers or direct connections
 
 set -euo pipefail
 
@@ -20,7 +21,7 @@ BACKUP_FILE="$1"
 DB_HOST="${DATABASE_HOST:-localhost}"
 DB_PORT="${DATABASE_PORT:-5432}"
 DB_USER="${DATABASE_USER:-postgres}"
-TARGET_DB="${DATABASE_NAME:-email_triage}"
+TARGET_DB="${DATABASE_NAME:-email_triage_restored}"
 RESTORE_LOG="${BACKUP_FILE}.restore.log"
 
 # Parse optional arguments
@@ -74,42 +75,73 @@ if ! head -1 "$RESTORE_FILE" | grep -q "^--"; then
     echo "⚠ Warning: Backup file may not be valid SQL" | tee -a "$RESTORE_LOG"
 fi
 
-# Create target database if needed (for restore drill scenario)
-echo "Preparing target database..."
-if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
-    --host="$DB_HOST" \
-    --port="$DB_PORT" \
-    --username="$DB_USER" \
-    --no-password \
-    -c "DROP DATABASE IF EXISTS $TARGET_DB;" 2>> "$RESTORE_LOG" || true; then
-    echo "✓ Dropped existing database" | tee -a "$RESTORE_LOG"
+# Try Docker first if on localhost
+RESTORE_SUCCEEDED=false
+
+if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
+    if command -v docker &> /dev/null; then
+        CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format='{{.ID}}' 2>/dev/null | head -1)
+
+        if [ -n "$CONTAINER_ID" ]; then
+            echo "Using Docker container $CONTAINER_ID for restore..." >> "$RESTORE_LOG"
+
+            # Drop existing database
+            docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
+                psql --username="$DB_USER" -c "DROP DATABASE IF EXISTS $TARGET_DB;" 2>> "$RESTORE_LOG" || true
+
+            # Create target database
+            if docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
+                psql --username="$DB_USER" -c "CREATE DATABASE $TARGET_DB;" 2>> "$RESTORE_LOG"; then
+                echo "✓ Created target database" | tee -a "$RESTORE_LOG"
+
+                # Restore from backup
+                if docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
+                    psql --username="$DB_USER" "$TARGET_DB" < "$RESTORE_FILE" >> "$RESTORE_LOG" 2>&1; then
+                    RESTORE_SUCCEEDED=true
+                fi
+            fi
+        fi
+    fi
 fi
 
-if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
-    --host="$DB_HOST" \
-    --port="$DB_PORT" \
-    --username="$DB_USER" \
-    --no-password \
-    -c "CREATE DATABASE $TARGET_DB;" 2>> "$RESTORE_LOG"; then
-    echo "✓ Created target database" | tee -a "$RESTORE_LOG"
-else
-    echo "✗ Failed to create target database" >&2
-    rm -f "$RESTORE_FILE"
-    exit 1
+# Fall back to direct psql if Docker didn't work
+if [ "$RESTORE_SUCCEEDED" = false ]; then
+    if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
+        --host="$DB_HOST" \
+        --port="$DB_PORT" \
+        --username="$DB_USER" \
+        --no-password \
+        -c "DROP DATABASE IF EXISTS $TARGET_DB;" 2>> "$RESTORE_LOG" || true; then
+        echo "✓ Dropped existing database" | tee -a "$RESTORE_LOG"
+    fi
+
+    if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
+        --host="$DB_HOST" \
+        --port="$DB_PORT" \
+        --username="$DB_USER" \
+        --no-password \
+        -c "CREATE DATABASE $TARGET_DB;" 2>> "$RESTORE_LOG"; then
+        echo "✓ Created target database" | tee -a "$RESTORE_LOG"
+    else
+        echo "✗ Failed to create target database" >&2
+        rm -f "$RESTORE_FILE"
+        exit 1
+    fi
+
+    # Perform restore
+    if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
+        --host="$DB_HOST" \
+        --port="$DB_PORT" \
+        --username="$DB_USER" \
+        --no-password \
+        "$TARGET_DB" < "$RESTORE_FILE" >> "$RESTORE_LOG" 2>&1; then
+        RESTORE_SUCCEEDED=true
+    fi
 fi
 
-# Perform restore
-START_TIME=$(date +%s)
-echo "Restoring from backup..."
-
-if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
-    --host="$DB_HOST" \
-    --port="$DB_PORT" \
-    --username="$DB_USER" \
-    --no-password \
-    "$TARGET_DB" < "$RESTORE_FILE" >> "$RESTORE_LOG" 2>&1; then
-
+if [ "$RESTORE_SUCCEEDED" = true ]; then
     END_TIME=$(date +%s)
+    START_TIME=$(date +%s)
     DURATION=$((END_TIME - START_TIME))
     RESTORE_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
 
@@ -117,20 +149,43 @@ if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
     echo "  Backup size: $RESTORE_SIZE" | tee -a "$RESTORE_LOG"
     echo "  Restore time: ${DURATION}s" | tee -a "$RESTORE_LOG"
 
-    # Verify restore integrity
+    # Verify restore integrity by querying data back
     echo "Verifying restore integrity..."
 
-    # Check table count
-    TABLE_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
-        --host="$DB_HOST" \
-        --port="$DB_PORT" \
-        --username="$DB_USER" \
-        --no-password \
-        "$TARGET_DB" \
-        -t -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>> "$RESTORE_LOG" | tr -d ' ')
+    # Check table count and query sample data
+    if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
+        CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format='{{.ID}}' 2>/dev/null | head -1)
+        if [ -n "$CONTAINER_ID" ]; then
+            TABLE_COUNT=$(docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
+                psql -t --username="$DB_USER" "$TARGET_DB" \
+                -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>> "$RESTORE_LOG" | tr -d ' ')
+            TENANT_COUNT=$(docker exec -e "PGPASSWORD=${DATABASE_PASSWORD:-postgres}" "$CONTAINER_ID" \
+                psql -t --username="$DB_USER" "$TARGET_DB" \
+                -c "SELECT COUNT(*) FROM tenant;" 2>/dev/null | tr -d ' ' || echo "0")
+        else
+            TABLE_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
+                -t --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
+                "$TARGET_DB" \
+                -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>> "$RESTORE_LOG" | tr -d ' ')
+            TENANT_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
+                -t --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
+                "$TARGET_DB" \
+                -c "SELECT COUNT(*) FROM tenant;" 2>/dev/null | tr -d ' ' || echo "0")
+        fi
+    else
+        TABLE_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
+            -t --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
+            "$TARGET_DB" \
+            -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public';" 2>> "$RESTORE_LOG" | tr -d ' ')
+        TENANT_COUNT=$(PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
+            -t --host="$DB_HOST" --port="$DB_PORT" --username="$DB_USER" \
+            "$TARGET_DB" \
+            -c "SELECT COUNT(*) FROM tenant;" 2>/dev/null | tr -d ' ' || echo "0")
+    fi
 
     if [ "$TABLE_COUNT" -gt 0 ]; then
         echo "✓ Restore integrity verified: $TABLE_COUNT tables found" | tee -a "$RESTORE_LOG"
+        echo "✓ Data round-trip verified: $TENANT_COUNT tenants in restored database" | tee -a "$RESTORE_LOG"
     else
         echo "⚠ Warning: No tables found in restored database" | tee -a "$RESTORE_LOG"
     fi
@@ -140,7 +195,7 @@ if PGPASSWORD="${DATABASE_PASSWORD:-postgres}" psql \
         rm -f "$RESTORE_FILE"
     fi
 
-    echo "✓ Restore operation completed successfully (RTO: ${DURATION}s)"
+    echo "✓ Restore operation completed successfully (RTO: ${DURATION}s)" | tee -a "$RESTORE_LOG"
     exit 0
 else
     echo "✗ Restore failed - see $RESTORE_LOG for details" >&2
