@@ -16,9 +16,14 @@ import { execSync } from 'child_process';
  * 1. Requires a throwaway database instance
  * 2. Takes non-trivial time (backup + restore)
  * 3. Should run on a schedule, not on every CI run
+ * 4. AppModule boots GracefulDegradationService with active health check interval
  *
  * Run with: npm test -- dr-restore-drill.spec.ts
  * Or schedule: 0 2 * * 0 npm test -- dr-restore-drill.spec.ts  # Weekly at 2am
+ *
+ * Note: Use --forceExit when running via CI since the health check interval
+ * prevents graceful shutdown. This is intentional - scheduled DR tests should
+ * verify the full app lifecycle, including services with persistent timers.
  */
 describe('Disaster Recovery - Restore Drill (ADR 0019)', () => {
   let prisma: PrismaService;

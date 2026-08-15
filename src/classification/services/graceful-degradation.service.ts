@@ -102,6 +102,11 @@ export class GracefulDegradationService
       this.llmProviderHealthy = false;
       this.emitDegradationAlert();
     }
+
+    // Persist state to database
+    this.saveState().catch((err) =>
+      this.logger.error('Failed to persist failure state', err),
+    );
   }
 
   /**
@@ -117,6 +122,11 @@ export class GracefulDegradationService
     this.consecutiveFailures = 0;
     this.lastLlmFailure = null;
     this.llmProviderHealthy = true;
+
+    // Persist state to database
+    this.saveState().catch((err) =>
+      this.logger.error('Failed to persist recovery state', err),
+    );
   }
 
   /**
