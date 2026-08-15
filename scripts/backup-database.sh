@@ -45,6 +45,7 @@ backup_via_docker() {
         pg_dump \
         --username="$user" \
         --no-owner \
+        --clean \
         --if-exists \
         --verbose \
         "$db" > "$BACKUP_FILE" 2>> "$BACKUP_LOG"
@@ -72,8 +73,17 @@ BACKUP_SUCCEEDED=false
 
 if [ "$DB_HOST" = "localhost" ] || [ "$DB_HOST" = "127.0.0.1" ]; then
     if command -v docker &> /dev/null; then
-        # Try to find a running Postgres container
-        CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15-alpine" --format='{{.ID}}' 2>/dev/null | head -1)
+        # Allow explicit container ID via env var for reliability, otherwise auto-detect
+        CONTAINER_ID="${DOCKER_CONTAINER_ID:-}"
+
+        if [ -z "$CONTAINER_ID" ]; then
+            # Auto-detect: match postgres:15 (most common), then fallback to any postgres version
+            CONTAINER_ID=$(docker ps --filter "ancestor=postgres:15" --format='{{.ID}}' 2>/dev/null | head -1)
+            if [ -z "$CONTAINER_ID" ]; then
+                # Fallback to any postgres image by searching all running containers
+                CONTAINER_ID=$(docker ps --filter "status=running" --format='{{.ID}} {{.Image}}' 2>/dev/null | grep postgres | head -1 | awk '{print $1}')
+            fi
+        fi
 
         if [ -n "$CONTAINER_ID" ]; then
             if backup_via_docker "$CONTAINER_ID" "$DB_NAME" "$DB_USER" "${DATABASE_PASSWORD:-postgres}"; then

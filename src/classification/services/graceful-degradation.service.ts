@@ -87,7 +87,7 @@ export class GracefulDegradationService
    * Record LLM provider failure
    * Triggers degraded mode after threshold is reached
    */
-  recordLlmFailure(error: Error): void {
+  async recordLlmFailure(error: Error): Promise<void> {
     this.consecutiveFailures++;
     this.lastLlmFailure = new Date();
 
@@ -103,17 +103,15 @@ export class GracefulDegradationService
       this.emitDegradationAlert();
     }
 
-    // Persist state to database
-    this.saveState().catch((err) =>
-      this.logger.error('Failed to persist failure state', err),
-    );
+    // Persist state to database immediately (survives ungraceful shutdown)
+    await this.saveState();
   }
 
   /**
    * Record successful LLM provider call
    * Resets failure counter and restores normal mode
    */
-  recordLlmSuccess(): void {
+  async recordLlmSuccess(): Promise<void> {
     if (!this.llmProviderHealthy) {
       this.logger.log('LLM provider recovered, exiting degraded mode');
       this.emitRecoveryAlert();
@@ -123,10 +121,8 @@ export class GracefulDegradationService
     this.lastLlmFailure = null;
     this.llmProviderHealthy = true;
 
-    // Persist state to database
-    this.saveState().catch((err) =>
-      this.logger.error('Failed to persist recovery state', err),
-    );
+    // Persist state to database immediately (survives ungraceful shutdown)
+    await this.saveState();
   }
 
   /**
@@ -165,11 +161,14 @@ export class GracefulDegradationService
    * Manually trigger retry of LLM provider
    * Called after cooldown period or manual intervention
    */
-  retryLlmProvider(): void {
+  async retryLlmProvider(): Promise<void> {
     this.logger.log('Attempting LLM provider recovery...');
     this.consecutiveFailures = 0;
     this.lastLlmFailure = null;
     this.llmProviderHealthy = true;
+
+    // Persist state to database immediately
+    await this.saveState();
   }
 
   /**
