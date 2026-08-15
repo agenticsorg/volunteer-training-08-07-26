@@ -53,12 +53,16 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
       },
     });
 
-    // Create messages for each tenant
+    // Create messages for each tenant (use proper UUID format)
+    const crypto = require('crypto');
+    const testMessageUuid1 = crypto.randomUUID();
+    const testMessageUuid2 = crypto.randomUUID();
+
     message1Id = (
       await prisma.ingestedMessage.create({
         data: {
           tenantId: tenant1Id,
-          messageId: 'a-msg-uuid-1',
+          messageId: testMessageUuid1,
           mailboxId: 'tenant-a@example.com',
           platformMessageId: 'gmail-a-1',
           platform: 'gmail',
@@ -75,7 +79,7 @@ describe('API V1 - Tenant Scoping Defense-in-Depth (E2E)', () => {
       await prisma.ingestedMessage.create({
         data: {
           tenantId: tenant2Id,
-          messageId: 'b-msg-uuid-1',
+          messageId: testMessageUuid2,
           mailboxId: 'tenant-b@example.com',
           platformMessageId: 'gmail-b-1',
           platform: 'gmail',
