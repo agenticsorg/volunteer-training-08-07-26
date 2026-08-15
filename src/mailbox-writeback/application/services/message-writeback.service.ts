@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { MessageWriteBackState } from '../../domain/aggregates/message-writeback-state.aggregate';
 import { FacetType } from '../../domain/value-objects/facet-application';
 import { MessageWriteBackStateRepository } from '../../infrastructure/repositories/message-writeback-state.repository';
@@ -8,8 +8,8 @@ import { MailboxWritePort } from '../../domain/ports/mailbox-write.port';
 export class MessageWriteBackService {
   constructor(
     private readonly repository: MessageWriteBackStateRepository,
-    private readonly gmailAdapter: MailboxWritePort,
-    private readonly outlookAdapter: MailboxWritePort,
+    @Inject('GMAIL_WRITE_PORT') private readonly gmailAdapter: MailboxWritePort,
+    @Inject('OUTLOOK_WRITE_PORT') private readonly outlookAdapter: MailboxWritePort,
   ) {}
 
   async applyFacet(

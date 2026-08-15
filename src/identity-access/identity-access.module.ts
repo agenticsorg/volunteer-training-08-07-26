@@ -16,6 +16,10 @@ import { DatabaseModule } from '../database/database.module';
     MailboxAuthorizationRepository,
     MailboxAuthorizationService,
     MockSecretsVaultAdapter,
+    {
+      provide: 'SECRETS_VAULT_PORT',
+      useClass: MockSecretsVaultAdapter,
+    },
     GoogleOAuthAdapter,
     MicrosoftOAuthAdapter,
     {

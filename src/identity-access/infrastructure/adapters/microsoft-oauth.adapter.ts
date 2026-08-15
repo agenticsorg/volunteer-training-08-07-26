@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { OAuthProviderPort } from '../../domain/ports/oauth-provider.port';
 import { SecretsVaultPort } from '../../domain/ports/secrets-vault.port';
 
@@ -6,7 +6,9 @@ import { SecretsVaultPort } from '../../domain/ports/secrets-vault.port';
 export class MicrosoftOAuthAdapter implements OAuthProviderPort {
   platform: 'gmail' | 'outlook' = 'outlook';
 
-  constructor(private secretsVault: SecretsVaultPort) {}
+  constructor(
+    @Inject('SECRETS_VAULT_PORT') private secretsVault: SecretsVaultPort,
+  ) {}
 
   initiateConsent(
     state: string,

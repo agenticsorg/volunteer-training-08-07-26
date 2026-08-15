@@ -10,6 +10,14 @@ import { OutlookWriteBackAdapter } from './infrastructure/adapters/outlook-write
     MessageWriteBackStateRepository,
     GmailWriteBackAdapter,
     OutlookWriteBackAdapter,
+    {
+      provide: 'GMAIL_WRITE_PORT',
+      useExisting: GmailWriteBackAdapter,
+    },
+    {
+      provide: 'OUTLOOK_WRITE_PORT',
+      useExisting: OutlookWriteBackAdapter,
+    },
   ],
   exports: [
     MessageWriteBackService,
