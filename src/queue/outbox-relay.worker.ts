@@ -5,6 +5,7 @@ import Redis from 'ioredis';
 import { PrismaService } from '../database/prisma.service';
 import { logger } from '../observability/logger';
 import { EVENT_QUEUE_ROUTING, QUEUE_NAMES, QueueName } from './event-routing';
+import { getQueuePrefix } from './queue-prefix';
 import { REDIS_CONNECTION } from './redis.provider';
 
 const BATCH_SIZE = 50;
@@ -28,8 +29,9 @@ export class OutboxRelayWorker implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
+    const prefix = getQueuePrefix();
     for (const name of QUEUE_NAMES) {
-      this.queues.set(name, new Queue(name, { connection: this.redis }));
+      this.queues.set(name, new Queue(name, { connection: this.redis, prefix }));
     }
   }
 

@@ -4,6 +4,7 @@ import { Job, Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { logger } from '../observability/logger';
 import { QUEUE_NAMES } from './event-routing';
+import { getQueuePrefix } from './queue-prefix';
 import { REDIS_CONNECTION } from './redis.provider';
 
 interface RelayedJobData {
@@ -34,6 +35,7 @@ export class EventBridgeWorker implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
+    const prefix = getQueuePrefix();
     this.workers = QUEUE_NAMES.map(
       (queueName) =>
         new Worker(
@@ -45,7 +47,7 @@ export class EventBridgeWorker implements OnModuleInit, OnModuleDestroy {
               tenantId: job.data.tenantId,
             });
           },
-          { connection: this.redis },
+          { connection: this.redis, prefix },
         ),
     );
     for (const worker of this.workers) {
