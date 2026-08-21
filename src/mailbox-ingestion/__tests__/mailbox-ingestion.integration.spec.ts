@@ -1,19 +1,16 @@
-import { SyncCursor } from '../domain/value-objects/sync-cursor';
 import { MessageEnvelopeFactory } from '../domain/value-objects/message-envelope';
-import { MailboxConnectionRepository } from '../infrastructure/repositories/mailbox-connection.repository';
 import { IngestedMessageRepository } from '../infrastructure/repositories/ingested-message.repository';
 import { GmailIngestionAdapter } from '../infrastructure/adapters/gmail-ingestion.adapter';
 import { RateLimiterAdapter } from '../infrastructure/adapters/rate-limiter.adapter';
+import { PrismaService } from '../../database/prisma.service';
+
+const skipIfNoDb = process.env.DATABASE_URL ? describe : describe.skip;
 
 describe('Mailbox Ingestion - Integration Tests', () => {
-  let mailboxRepo: MailboxConnectionRepository;
-  let messageRepo: IngestedMessageRepository;
   let gmailAdapter: GmailIngestionAdapter;
   let rateLimiter: RateLimiterAdapter;
-  
+
   beforeAll(() => {
-    mailboxRepo = new MailboxConnectionRepository();
-    messageRepo = new IngestedMessageRepository();
     gmailAdapter = new GmailIngestionAdapter();
     rateLimiter = new RateLimiterAdapter();
   });
@@ -34,34 +31,64 @@ describe('Mailbox Ingestion - Integration Tests', () => {
     });
   });
   
-  describe('Redelivery idempotency', () => {
-    it('should idempotently handle duplicate webhooks', async () => {
-      const tenantId = 'tenant-1';
+  skipIfNoDb('Redelivery idempotency (against a live DB, real Prisma-backed repository)', () => {
+    let prisma: PrismaService;
+    let messageRepo: IngestedMessageRepository;
+    let tenantId: string;
+
+    beforeAll(async () => {
+      prisma = new PrismaService();
+      await prisma.onModuleInit();
+      messageRepo = new IngestedMessageRepository(prisma);
+      const tenant = await prisma.tenant.create({ data: { name: 'Redelivery Idempotency Test Tenant' } });
+      tenantId = tenant.id;
+    });
+
+    afterAll(async () => {
+      await prisma.ingestedMessage.deleteMany({ where: { tenantId } });
+      await prisma.domainEventOutbox.deleteMany({ where: { tenantId } });
+      await prisma.tenant.deleteMany({ where: { id: tenantId } });
+      await prisma.onModuleDestroy();
+    });
+
+    it('should idempotently handle duplicate webhooks — same row, event published exactly once', async () => {
       const mailboxId = 'user@example.com';
       const platform = 'gmail';
       const platformMessageId = 'gmail-msg-xyz';
-      
-      // First message
+      const internalMessageId = crypto.randomUUID();
+
       const first = {
         tenantId,
         mailboxId,
         platform,
         platformMessageId,
-        messageId: 'internal-uuid-1',
+        messageId: internalMessageId,
         normalizedEnvelope: MessageEnvelopeFactory.create({
-          messageId: 'internal-uuid-1',
+          messageId: internalMessageId,
           from: 'sender@example.com',
           to: [mailboxId],
           platform: 'gmail',
           sentAt: new Date().toISOString(),
         }),
       };
-      
-      const saved1 = await messageRepo.save(first);
-      const saved2 = await messageRepo.save(first);
-      
-      // Unique constraint: should return same record
+      const event = {
+        aggregateId: internalMessageId,
+        aggregateType: 'IngestedMessage',
+        eventType: 'MessageIngestedEvent',
+        payload: { messageId: internalMessageId, tenantId, mailboxId, platform },
+      };
+
+      const saved1 = await messageRepo.save(first, [event]);
+      const saved2 = await messageRepo.save(first, [event]);
+
+      // Unique constraint: should return same record, not a duplicate
       expect(saved1.messageId).toBe(saved2.messageId);
+      expect(saved1.id).toBe(saved2.id);
+
+      const outboxRows = await prisma.domainEventOutbox.findMany({
+        where: { tenantId, aggregateId: internalMessageId },
+      });
+      expect(outboxRows).toHaveLength(1);
     });
   });
   

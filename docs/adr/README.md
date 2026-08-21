@@ -31,6 +31,18 @@ Format: [MADR](https://adr.github.io/madr/)-style — Title, Status, Date, Conte
 | [0021](0021-usage-metering-billing.md) | Usage metering & billing integration | Accepted |
 | [0022](0022-testing-and-evaluation-strategy.md) | Testing & evaluation strategy | Accepted |
 
+### Remediation ADRs (post-implementation audit, 2026-08-21)
+
+An audit of the running codebase against this implementation plan found that while domain modeling across all 13 stages is genuinely strong, the bounded contexts do not actually talk to each other at runtime, several external adapters are mocked in ways indistinguishable from real implementations, and the golden-dataset/shadow-evaluation harness required since Stage 4 was never built. The following ADRs resolve those gaps; the corresponding implementation work is tracked as GitHub issues [#30-#51](https://github.com/agenticsorg/volunteer-training-08-07-26/issues?q=is%3Aissue).
+
+| # | Title | Status |
+|---|---|---|
+| [0023](0023-durable-cross-context-event-backbone.md) | Durable cross-context event backbone (transactional outbox + queue-backed delivery) | Accepted |
+| [0024](0024-application-layer-orchestration-mandate.md) | Application-layer orchestration mandate per bounded context | Accepted |
+| [0025](0025-external-adapter-realism-policy.md) | External platform & LLM adapter realism policy | Accepted |
+| [0026](0026-golden-dataset-shadow-evaluation-harness.md) | Golden-dataset & shadow-evaluation harness | Accepted |
+| [0027](0027-kms-backed-secrets-vault.md) | Real KMS-backed secrets vault | Accepted |
+
 ## Open decisions from the research resolved by these ADRs
 
 The research (§6) flagged seven open decisions. Each is resolved by a specific ADR:
@@ -45,4 +57,4 @@ The research (§6) flagged seven open decisions. Each is resolved by a specific 
 
 ## Reading order
 
-For a first-time reader: start with 0001–0003 (system shape), then 0004–0011 (the classification pipeline itself), then 0012–0015 (security/privacy/multi-tenancy foundations), then 0016–0019 (operating the system), then 0020–0022 (API, commercial, and quality layers).
+For a first-time reader: start with 0001–0003 (system shape), then 0004–0011 (the classification pipeline itself), then 0012–0015 (security/privacy/multi-tenancy foundations), then 0016–0019 (operating the system), then 0020–0022 (API, commercial, and quality layers), then 0023–0027 (post-implementation remediation: cross-context wiring, adapter realism, eval harness, secrets vault).

@@ -2,9 +2,9 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, stage-*]
+    branches: [main, stage-*, adr-*]
   pull_request:
-    branches: [main, stage-*]
+    branches: [main, stage-*, adr-*]
 
 jobs:
   build:
@@ -13,6 +13,34 @@ jobs:
     strategy:
       matrix:
         node-version: [20.x]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: email_triage
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/email_triage
+      REDIS_URL: redis://localhost:6379
 
     steps:
       - uses: actions/checkout@v4
@@ -32,11 +60,20 @@ jobs:
       - name: Lint
         run: npm run lint -- --no-fix || echo "Linting warnings (non-fatal)"
 
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
       - name: Run tests
         run: npm run test -- --coverage --passWithNoTests
 
       - name: Check RLS policy coverage
         run: node scripts/check-rls-policies.js
+
+      - name: Check table name consistency
+        run: node scripts/check-table-name-consistency.js
+
+      - name: Check outbox routing coverage
+        run: node scripts/check-outbox-routing.js
 
       - name: Security audit
         run: npm audit --audit-level=moderate || echo "Audit completed with warnings"

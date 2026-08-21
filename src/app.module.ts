@@ -1,8 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { QueueModule } from './queue/queue.module';
 import { TenantSubscriptionModule } from './tenant-subscription/tenant-subscription.module';
 import { IdentityAccessModule } from './identity-access/identity-access.module';
 import { MailboxIngestionModule } from './mailbox-ingestion/mailbox-ingestion.module';
@@ -19,8 +21,10 @@ import { ApiV1Module } from './api/v1/api.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     EventEmitterModule.forRoot({ maxListeners: 100 }),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     HealthModule,
+    QueueModule,
     TenantSubscriptionModule,
     IdentityAccessModule,
     MailboxIngestionModule,

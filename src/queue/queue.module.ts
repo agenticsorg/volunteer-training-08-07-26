@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { logger } from '../observability/logger';
+import { DatabaseModule } from '../database/database.module';
+import { EventBridgeWorker } from './event-bridge.worker';
+import { OutboxRelayWorker } from './outbox-relay.worker';
+import { RedisConnectionService, RedisProvider } from './redis.provider';
 
-@Module({})
-export class QueueModule {
-  constructor(private configService: ConfigService) {
-    logger.info({ redis_url: this.configService.get('REDIS_URL') }, 'Queue module initialized (BullMQ skeleton)');
-  }
-}
+@Module({
+  imports: [DatabaseModule],
+  providers: [RedisConnectionService, RedisProvider, OutboxRelayWorker, EventBridgeWorker],
+  exports: [RedisProvider],
+})
+export class QueueModule {}

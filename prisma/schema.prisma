@@ -20,7 +20,8 @@ model Tenant {
   ingestedMessages      IngestedMessage[]
   messageBodyRefs       MessageBodyRef[]
   syncEventLogs         SyncEventLog[]
-  outboxEvents          OutboxEvent[]
+  domainEventOutbox     DomainEventOutbox[]
+  eventConsumerCheckpoints EventConsumerCheckpoint[]
   senderProfiles        SenderProfile[]
 
   @@map("tenants")
@@ -288,15 +289,20 @@ model SyncEventLog {
   @@map("sync_event_logs")
 }
 
-// Outbox for transactional event publishing
-model OutboxEvent {
+// Transactional outbox for durable cross-context event publishing (ADR 0023).
+// Written in the same DB transaction as the aggregate's state change (see
+// src/database/tenant-transaction.ts), then relayed onto BullMQ by the
+// outbox-relay worker (src/queue/outbox-relay.worker.ts).
+model DomainEventOutbox {
   id            String  @id @default(cuid())
   tenantId      String  @map("tenant_id") @db.Uuid
   aggregateId   String  @map("aggregate_id")
-  aggregateType String  @map("aggregate_type") // IngestedMessage
-  eventType     String  @map("event_type") // MessageIngested
+  aggregateType String  @map("aggregate_type") // e.g. IngestedMessage
+  eventType     String  @map("event_type") // e.g. MessageIngestedEvent
   payload       Json
   published     Boolean @default(false)
+  attempts      Int     @default(0) // relay delivery attempts, for retry/backoff
+  lastError     String? @map("last_error")
 
   createdAt   DateTime  @default(now()) @map("created_at")
   publishedAt DateTime? @map("published_at")
@@ -305,7 +311,24 @@ model OutboxEvent {
 
   @@index([tenantId])
   @@index([published])
-  @@map("outbox_events")
+  @@map("domain_event_outbox")
+}
+
+// Consume-side idempotency: one row per (outbox event, consumer) pair, so an
+// at-least-once redelivery from the relay never double-applies a consumer's
+// side effects (ADR 0023 / ADR 0024).
+model EventConsumerCheckpoint {
+  id            String   @id @default(cuid())
+  tenantId      String   @map("tenant_id") @db.Uuid
+  outboxEventId String   @map("outbox_event_id") // DomainEventOutbox.id (soft reference — outbox rows may be pruned)
+  consumerName  String   @map("consumer_name") // e.g. "ContactGraphConsumer"
+  processedAt   DateTime @default(now()) @map("processed_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([outboxEventId, consumerName])
+  @@index([tenantId])
+  @@map("event_consumer_checkpoint")
 }
 
 // Classification context

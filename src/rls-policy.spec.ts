@@ -14,6 +14,21 @@
  * - Policies must use USING clause to filter by tenant_id
  */
 
+import { PrismaClient } from '@prisma/client';
+
+// The application's default DATABASE_URL connects as the table OWNER, which
+// Postgres exempts from RLS policies by default (see migration
+// 20260821160000_add_domain_event_outbox for the full finding and the
+// restricted, non-owner "app_user" role it creates specifically so this can
+// be tested for real). Build that role's connection string from the same
+// host/port/database as DATABASE_URL, swapping only the credentials.
+function restrictedDbUrl(): string {
+  const url = new URL(process.env.DATABASE_URL as string);
+  url.username = 'app_user';
+  url.password = 'app_user_dev_only_change_in_prod';
+  return url.toString();
+}
+
 describe('RLS Policy Coverage', () => {
   // Dynamically extract tables that have RLS enabled from the migration
   const extractRLSEnabledTables = (migration: string): string[] => {
@@ -76,38 +91,76 @@ describe('RLS Policy Coverage', () => {
     });
   });
 
-  describe('RLS Adversarial Tests (against live DB)', () => {
-    // These tests are designed to run against a live PostgreSQL instance
-    // Skip if no database is available
+  describe('RLS Adversarial Tests (against live DB, as the restricted app_user role)', () => {
+    // Skipped if no database is available. Connects as "app_user" — a
+    // non-owner role with NOBYPASSRLS (created by migration
+    // 20260821160000_add_domain_event_outbox) — rather than the default
+    // owner-role DATABASE_URL, because Postgres exempts a table's owner from
+    // its own RLS policies by default. A test run as the owner would "pass"
+    // this suite even if every policy were deleted; see the migration's
+    // comments and the tracked GitHub issue for why the running application
+    // does not yet connect this way for real (that's the larger, separate
+    // fix — this suite proves the policies themselves are correct).
+    const skipIfNoDb = process.env.DATABASE_URL ? describe : describe.skip;
 
-    const skipIfNoDb = process.env.DATABASE_URL ? it : it.skip;
+    skipIfNoDb('cross-tenant isolation', () => {
+      let admin: PrismaClient;
+      let restricted: PrismaClient;
+      let tenant1Id: string;
+      let tenant2Id: string;
 
-    skipIfNoDb('should block cross-tenant read', async () => {
-      // This test requires:
-      // 1. Two tenants seeded in the database
-      // 2. Data records in each tenant's namespace
-      // 3. A database connection with RLS enabled
+      beforeAll(async () => {
+        admin = new PrismaClient();
+        restricted = new PrismaClient({ datasources: { db: { url: restrictedDbUrl() } } });
 
-      // Expected behavior:
-      // When running SELECT * FROM users WHERE tenant_id = 'tenant-2'
-      // with row_security_context.tenant_id = 'tenant-1',
-      // the query should return 0 rows (not throw an error)
+        const t1 = await admin.tenant.create({ data: { name: 'RLS Adversarial Test — Tenant 1' } });
+        const t2 = await admin.tenant.create({ data: { name: 'RLS Adversarial Test — Tenant 2' } });
+        tenant1Id = t1.id;
+        tenant2Id = t2.id;
 
-      expect(true).toBe(true); // Placeholder
-    });
+        await admin.mailboxConnection.create({
+          data: { tenantId: tenant1Id, mailboxId: 'tenant1@example.com', platform: 'gmail', credentialHandleId: 'handle-1' },
+        });
+        await admin.mailboxConnection.create({
+          data: { tenantId: tenant2Id, mailboxId: 'tenant2@example.com', platform: 'gmail', credentialHandleId: 'handle-2' },
+        });
+      });
 
-    skipIfNoDb('should block cross-tenant write', async () => {
-      // This test requires:
-      // 1. Two tenants seeded in the database
-      // 2. A database connection as tenant-1
+      afterAll(async () => {
+        await admin.mailboxConnection.deleteMany({ where: { tenantId: { in: [tenant1Id, tenant2Id] } } });
+        await admin.tenant.deleteMany({ where: { id: { in: [tenant1Id, tenant2Id] } } });
+        await admin.$disconnect();
+        await restricted.$disconnect();
+      });
 
-      // Expected behavior:
-      // When attempting INSERT INTO users (tenantId, email)
-      // VALUES ('tenant-2', 'user@example.com')
-      // with row_security_context.tenant_id = 'tenant-1',
-      // the query should fail with a permission error
+      it('should block cross-tenant read: tenant-1 context sees only tenant-1 rows', async () => {
+        const rows = await restricted.$transaction(async (tx) => {
+          await tx.$executeRawUnsafe(`SELECT set_config('row_security_context.tenant_id', $1, true)`, tenant1Id);
+          return tx.mailboxConnection.findMany({ where: { tenantId: { in: [tenant1Id, tenant2Id] } } });
+        });
 
-      expect(true).toBe(true); // Placeholder
+        expect(rows).toHaveLength(1);
+        expect(rows[0].tenantId).toBe(tenant1Id);
+      });
+
+      it('should block cross-tenant write: cannot insert a row for another tenant while scoped to tenant-1', async () => {
+        await expect(
+          restricted.$transaction(async (tx) => {
+            await tx.$executeRawUnsafe(`SELECT set_config('row_security_context.tenant_id', $1, true)`, tenant1Id);
+            // RLS policies with only a USING clause apply it as the WITH CHECK
+            // clause too for INSERT/UPDATE, so this insert for tenant-2's id
+            // while scoped to tenant-1 must be rejected, not silently accepted.
+            return tx.mailboxConnection.create({
+              data: { tenantId: tenant2Id, mailboxId: 'malicious@example.com', platform: 'gmail', credentialHandleId: 'handle-x' },
+            });
+          }),
+        ).rejects.toThrow();
+
+        const leaked = await admin.mailboxConnection.findFirst({
+          where: { tenantId: tenant2Id, mailboxId: 'malicious@example.com' },
+        });
+        expect(leaked).toBeNull();
+      });
     });
   });
 });
